@@ -8,12 +8,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  Keyboard,
 } from "react-native";
 import { searchFoods } from "../utils/api";
 import { addMeal } from "../utils/storage";
 import { generateId, todayISO } from "../utils/nutrition";
 import { Food, MealEntry } from "../types";
-
 import { Colors } from "../style/theme";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
@@ -22,42 +23,36 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
 
   async function handleSearch() {
     if (!query.trim()) return;
+    Keyboard.dismiss();
     setLoading(true);
     try {
       const foods = await searchFoods(query);
       setResults(foods);
-    } catch {
-      Alert.alert("Error", "Could not fetch results. Check your API keys.");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not fetch results.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleLog(food: Food, mealType: (typeof MEAL_TYPES)[number]) {
+  async function handleLog(mealType: (typeof MEAL_TYPES)[number]) {
+    if (!selectedFood) return;
     const entry: MealEntry = {
       id: generateId(),
-      food,
+      food: selectedFood,
       mealType,
       servings: 1,
       date: todayISO(),
       loggedAt: new Date().toISOString(),
     };
     await addMeal(entry);
-    Alert.alert("Logged!", `${food.name} added to ${mealType}`);
-  }
-
-  function showMealPicker(food: Food) {
-    Alert.alert(
-      "Add to meal",
-      "Which meal?",
-      MEAL_TYPES.map((type) => ({
-        text: type,
-        onPress: () => handleLog(food, type),
-      })),
-    );
+    const name = selectedFood.name;
+    setSelectedFood(null);
+    Alert.alert("Logged!", `${name} added to ${mealType}`);
   }
 
   return (
@@ -66,6 +61,7 @@ export default function SearchScreen() {
         <TextInput
           style={styles.input}
           placeholder="Search foods..."
+          placeholderTextColor={Colors.textDim}
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={handleSearch}
@@ -83,10 +79,11 @@ export default function SearchScreen() {
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.resultCard}
-            onPress={() => showMealPicker(item)}
+            onPress={() => setSelectedFood(item)}
           >
             <View style={styles.resultLeft}>
               <Text style={styles.foodName}>
@@ -109,20 +106,54 @@ export default function SearchScreen() {
           ) : null
         }
       />
+
+      <Modal
+        visible={!!selectedFood}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedFood(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedFood(null)}
+        >
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>
+              {selectedFood?.name.charAt(0).toUpperCase()}
+              {selectedFood?.name.slice(1)}
+            </Text>
+            <Text style={styles.modalSub}>Add to which meal?</Text>
+            {MEAL_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.mealBtn}
+                onPress={() => handleLog(type)}
+              >
+                <Text style={styles.mealBtnText}>{type}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setSelectedFood(null)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.platinum, padding: 16 },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 16 },
   searchRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   input: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.secondaryBackground,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
+    color: Colors.white,
     elevation: 2,
   },
   searchBtn: {
@@ -133,7 +164,7 @@ const styles = StyleSheet.create({
   },
   searchBtnText: { color: Colors.white, fontWeight: "700", fontSize: 16 },
   resultCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.secondaryBackground,
     borderRadius: 10,
     padding: 14,
     marginBottom: 8,
@@ -142,10 +173,51 @@ const styles = StyleSheet.create({
   },
   resultLeft: { flex: 1 },
   resultRight: { alignItems: "flex-end", justifyContent: "center" },
-  foodName: { fontSize: 15, fontWeight: "600", color: Colors.black },
-  brand: { fontSize: 12, color: Colors.dimGrey, marginTop: 2 },
-  serving: { fontSize: 12, color: Colors.dimGrey, marginTop: 2 },
-  calories: { fontSize: 22, fontWeight: "bold", color: Colors.rosyGranite },
-  kcal: { fontSize: 12, color: Colors.dimGrey },
-  hint: { textAlign: "center", color: Colors.dimGrey, marginTop: 40, fontSize: 15 },
+  foodName: { fontSize: 15, fontWeight: "600", color: Colors.white },
+  brand: { fontSize: 12, color: Colors.textDim, marginTop: 2 },
+  serving: { fontSize: 12, color: Colors.textDim, marginTop: 2 },
+  calories: { fontSize: 22, fontWeight: "bold", color: Colors.primary },
+  kcal: { fontSize: 12, color: Colors.textDim },
+  hint: { textAlign: "center", color: Colors.textDim, marginTop: 40, fontSize: 15 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: Colors.secondaryBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontSize: 13,
+    color: Colors.textDim,
+    marginBottom: 16,
+  },
+  mealBtn: {
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+  },
+  mealBtnText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  cancelText: {
+    color: Colors.textDim,
+    textAlign: "center",
+    marginTop: 8,
+    fontSize: 15,
+  },
 });

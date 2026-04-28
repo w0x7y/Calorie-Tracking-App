@@ -16,7 +16,7 @@ const Tab = createBottomTabNavigator();
 export default function App() {
   return (
     <NavigationContainer>
-      <StatusBar style="auto"/>
+      <StatusBar style="light"/>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
@@ -36,6 +36,8 @@ export default function App() {
             );
           },
           tabBarStyle: { backgroundColor: Colors.tabBackground, borderTopWidth: 0.5, borderTopColor: Colors.rosyGranite },
+          headerStyle: { backgroundColor: Colors.tabBackground },
+          headerTintColor: Colors.white,
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.dimGrey,
         })}
