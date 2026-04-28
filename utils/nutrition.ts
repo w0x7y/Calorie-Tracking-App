@@ -1,6 +1,25 @@
-import { MealEntry, DailyTotals } from "../types";
+import { MealEntry, DailyTotals, Food, UserProfile } from "../types";
 
-// Calculate totals for a list of meal entries
+// --- API & Mapping ---
+
+/**
+ * Converts CalorieNinjas API items to our internal Food interface
+ */
+export function mapApiToFood(apiItem: any): Food {
+  return {
+    id: generateId(),
+    name: apiItem.name,
+    calories: apiItem.calories,
+    protein: apiItem.protein_g,
+    carbs: apiItem.carbohydrates_total_g,
+    fat: apiItem.fat_total_g,
+    servingSize: apiItem.serving_size_g,
+    servingUnit: "g",
+  };
+}
+
+// --- Calculations ---
+
 export function calculateTotals(meals: MealEntry[]): DailyTotals {
   return meals.reduce(
     (totals, entry) => {
@@ -16,12 +35,25 @@ export function calculateTotals(meals: MealEntry[]): DailyTotals {
   );
 }
 
-// Round to 1 decimal place
+/**
+ * Calculates Base Metabolic Rate (BMR) using Mifflin-St Jeor
+ * This helps set the 'goalCalories' in the Profile screen.
+ */
+export function calculateBMR(
+  profile: UserProfile,
+  gender: "male" | "female",
+): number {
+  const { weightKg, heightCm, age } = profile;
+  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  return gender === "male" ? base + 5 : base - 161;
+}
+
+// --- Helpers ---
+
 export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// Get today's date as ISO string (YYYY-MM-DD)
 export function todayISO(): string {
   const date = new Date();
   const offset = date.getTimezoneOffset();
@@ -29,7 +61,6 @@ export function todayISO(): string {
   return localDate.toISOString().split("T")[0];
 }
 
-// Format a date string nicely e.g. "Monday, April 27"
 export function formatDate(iso: string): string {
   const date = new Date(iso + "T00:00:00");
   return date.toLocaleDateString("en-US", {
@@ -39,7 +70,6 @@ export function formatDate(iso: string): string {
   });
 }
 
-// Generate a simple unique ID
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
