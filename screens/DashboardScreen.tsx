@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { getMealsByDate } from "../utils/storage";
+import { getMealsByDate, deleteMeal } from "../utils/storage";
 import { calculateTotals, todayISO, formatDate } from "../utils/nutrition";
 import { MealEntry, DailyTotals } from "../types";
-
+import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../style/theme";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-const GOAL_CALORIES = 2000; // TODO: pull from user profile
+const GOAL_CALORIES = 2000;
+
+const MEAL_COLORS: Record<string, string> = {
+  Breakfast: "#FF9F43",
+  Lunch:     "#00D2D3",
+  Dinner:    "#A29BFE",
+  Snacks:    "#FD79A8",
+};
 
 export default function DashboardScreen() {
   const [meals, setMeals] = useState<MealEntry[]>([]);
@@ -20,14 +27,21 @@ export default function DashboardScreen() {
   });
   const today = todayISO();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      getMealsByDate(today).then((data) => {
-        setMeals(data);
-        setTotals(calculateTotals(data));
-      });
-    }, []),
-  );
+  function reload() {
+    getMealsByDate(today).then((data) => {
+      setMeals(data);
+      setTotals(calculateTotals(data));
+    });
+  }
+
+  useFocusEffect(React.useCallback(() => { reload(); }, []));
+
+  async function handleDelete(id: string, name: string) {
+    Alert.alert("Remove", `Remove ${name}?`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Remove", style: "destructive", onPress: async () => { await deleteMeal(id); reload(); } },
+    ]);
+  }
 
   const remaining = GOAL_CALORIES - totals.calories;
   const progress = Math.min(totals.calories / GOAL_CALORIES, 1);
@@ -70,17 +84,14 @@ export default function DashboardScreen() {
         ))}
       </View>
 
-      {/* Meals by type */}
       {MEAL_TYPES.map((type) => {
+        const color = MEAL_COLORS[type];
         const entries = meals.filter((m) => m.mealType === type);
-        const typeCals = entries.reduce(
-          (sum, e) => sum + e.food.calories * e.servings,
-          0,
-        );
+        const typeCals = entries.reduce((sum, e) => sum + e.food.calories * e.servings, 0);
         return (
-          <View key={type} style={styles.card}>
+          <View key={type} style={[styles.card, { borderLeftColor: color, borderLeftWidth: 4 }]}>
             <View style={styles.mealHeader}>
-              <Text style={styles.mealType}>{type}</Text>
+              <Text style={[styles.mealType, { color }]}>{type}</Text>
               <Text style={styles.mealCals}>{Math.round(typeCals)} kcal</Text>
             </View>
             {entries.length === 0 ? (
@@ -88,12 +99,16 @@ export default function DashboardScreen() {
             ) : (
               entries.map((e) => (
                 <View key={e.id} style={styles.foodRow}>
+                  <View style={[styles.foodDot, { backgroundColor: color }]} />
                   <Text style={styles.foodName}>
                     {e.food.name.charAt(0).toUpperCase() + e.food.name.slice(1)}
                   </Text>
                   <Text style={styles.foodCals}>
                     {Math.round(e.food.calories * e.servings)} kcal
                   </Text>
+                  <TouchableOpacity onPress={() => handleDelete(e.id, e.food.name)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
+                  </TouchableOpacity>
                 </View>
               ))
             )}
@@ -146,9 +161,11 @@ const styles = StyleSheet.create({
   empty: { color: Colors.textDim, fontStyle: "italic" },
   foodRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 4,
+    alignItems: "center",
+    paddingVertical: 6,
+    gap: 8,
   },
-  foodName: { color: Colors.textDim, flex: 1 },
-  foodCals: { color: Colors.textDim, marginLeft: 8 },
+  foodDot: { width: 7, height: 7, borderRadius: 4 },
+  foodName: { color: Colors.text, flex: 1, fontSize: 14 },
+  foodCals: { color: Colors.textDim, fontSize: 13 },
 });

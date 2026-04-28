@@ -19,11 +19,19 @@ import { Colors } from "../style/theme";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
+const MEAL_COLORS: Record<string, string> = {
+  Breakfast: "#FF9F43",
+  Lunch:     "#00D2D3",
+  Dinner:    "#A29BFE",
+  Snacks:    "#FD79A8",
+};
+
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [servings, setServings] = useState("1");
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -41,17 +49,20 @@ export default function SearchScreen() {
 
   async function handleLog(mealType: (typeof MEAL_TYPES)[number]) {
     if (!selectedFood) return;
+    const parsedServings = parseFloat(servings);
+    const validServings = isNaN(parsedServings) || parsedServings <= 0 ? 1 : parsedServings;
     const entry: MealEntry = {
       id: generateId(),
       food: selectedFood,
       mealType,
-      servings: 1,
+      servings: validServings,
       date: todayISO(),
       loggedAt: new Date().toISOString(),
     };
     await addMeal(entry);
     const name = selectedFood.name;
     setSelectedFood(null);
+    setServings("1");
     Alert.alert("Logged!", `${name} added to ${mealType}`);
   }
 
@@ -83,7 +94,7 @@ export default function SearchScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.resultCard}
-            onPress={() => setSelectedFood(item)}
+            onPress={() => { setSelectedFood(item); setServings("1"); }}
           >
             <View style={styles.resultLeft}>
               <Text style={styles.foodName}>
@@ -111,29 +122,87 @@ export default function SearchScreen() {
         visible={!!selectedFood}
         transparent
         animationType="slide"
-        onRequestClose={() => setSelectedFood(null)}
+        onRequestClose={() => { setSelectedFood(null); setServings("1"); }}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setSelectedFood(null)}
+          onPress={() => { setSelectedFood(null); setServings("1"); }}
         >
           <View style={styles.modalSheet}>
+            <View style={styles.handle} />
+
             <Text style={styles.modalTitle}>
-              {selectedFood?.name.charAt(0).toUpperCase()}
-              {selectedFood?.name.slice(1)}
+              {selectedFood?.name.charAt(0).toUpperCase()}{selectedFood?.name.slice(1)}
             </Text>
-            <Text style={styles.modalSub}>Add to which meal?</Text>
-            {MEAL_TYPES.map((type) => (
+
+            {/* Servings picker */}
+            <View style={styles.servingsRow}>
               <TouchableOpacity
-                key={type}
-                style={styles.mealBtn}
-                onPress={() => handleLog(type)}
+                style={styles.servingsBtn}
+                onPress={() => {
+                  const v = Math.max(0.5, (parseFloat(servings) || 1) - 0.5);
+                  setServings(String(v));
+                }}
               >
-                <Text style={styles.mealBtnText}>{type}</Text>
+                <Text style={styles.servingsBtnText}>−</Text>
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={() => setSelectedFood(null)}>
+              <View style={styles.servingsInputWrap}>
+                <TextInput
+                  style={styles.servingsInput}
+                  value={servings}
+                  onChangeText={setServings}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                />
+                <Text style={styles.servingsLabel}>
+                  × {selectedFood?.servingSize}{selectedFood?.servingUnit}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.servingsBtn}
+                onPress={() => {
+                  const v = (parseFloat(servings) || 1) + 0.5;
+                  setServings(String(v));
+                }}
+              >
+                <Text style={styles.servingsBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Live macros */}
+            <View style={styles.macroRow}>
+              {(() => {
+                const s = Math.max(0, parseFloat(servings) || 0);
+                return [
+                  { label: "Cal",     value: Math.round((selectedFood?.calories ?? 0) * s),  color: Colors.bar },
+                  { label: "Protein", value: `${Math.round((selectedFood?.protein ?? 0) * s)}g`, color: Colors.proteine },
+                  { label: "Carbs",   value: `${Math.round((selectedFood?.carbs ?? 0) * s)}g`,   color: Colors.carbohydrates },
+                  { label: "Fat",     value: `${Math.round((selectedFood?.fat ?? 0) * s)}g`,     color: Colors.fats },
+                ].map((m) => (
+                  <View key={m.label} style={[styles.macroPill, { borderColor: m.color }]}>
+                    <Text style={[styles.macroPillVal, { color: m.color }]}>{m.value}</Text>
+                    <Text style={styles.macroPillLabel}>{m.label}</Text>
+                  </View>
+                ));
+              })()}
+            </View>
+
+            <Text style={styles.modalSub}>Add to which meal?</Text>
+            <View style={styles.mealGrid}>
+              {MEAL_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.mealBtn, { borderColor: MEAL_COLORS[type] }]}
+                  onPress={() => handleLog(type)}
+                >
+                  <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[type] }]} />
+                  <Text style={styles.mealBtnText}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setSelectedFood(null); setServings("1"); }}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -181,43 +250,55 @@ const styles = StyleSheet.create({
   hint: { textAlign: "center", color: Colors.textDim, marginTop: 40, fontSize: 15 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "flex-end",
   },
   modalSheet: {
     backgroundColor: Colors.secondaryBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 44,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.rosyGranite,
+    alignSelf: "center", marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.white,
-    marginBottom: 4,
+    fontSize: 20, fontWeight: "700", color: Colors.white, marginBottom: 14,
   },
-  modalSub: {
-    fontSize: 13,
-    color: Colors.textDim,
-    marginBottom: 16,
+  macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
+  macroPill: {
+    flex: 1, borderWidth: 1.5, borderRadius: 10,
+    paddingVertical: 8, alignItems: "center",
   },
-  mealBtn: {
+  macroPillVal: { fontSize: 15, fontWeight: "700" },
+  macroPillLabel: { fontSize: 11, color: Colors.textDim, marginTop: 2 },
+  servingsRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 16, marginBottom: 20,
+  },
+  servingsBtn: {
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+  },
+  servingsBtnText: { color: Colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
+  servingsInputWrap: { alignItems: "center" },
+  servingsInput: {
+    color: Colors.white, fontSize: 28, fontWeight: "700",
+    textAlign: "center", minWidth: 60,
+  },
+  servingsLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
+  modalSub: { fontSize: 13, color: Colors.textDim, marginBottom: 12 },
+  mealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
+  mealBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    width: "47%", borderWidth: 1.5, borderRadius: 12,
     padding: 14,
-    marginBottom: 8,
   },
-  mealBtnText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  cancelText: {
-    color: Colors.textDim,
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 15,
-  },
+  mealDot: { width: 10, height: 10, borderRadius: 5 },
+  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  cancelBtn: { alignItems: "center", paddingTop: 4 },
+  cancelText: { color: Colors.textDim, fontSize: 15 },
 });
