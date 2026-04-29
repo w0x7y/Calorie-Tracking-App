@@ -150,7 +150,10 @@ function MiniLineChart({
           const isLast = i === data.length - 1;
           const showLabel = isFirst || isLast || data.length <= 5;
           return (
-            <View key={i} style={{ position: "absolute", left: x - 4, top: y - 4 }}>
+            <View
+              key={i}
+              style={{ position: "absolute", left: x - 4, top: y - 4 }}
+            >
               <View
                 style={{
                   width: 8,
@@ -174,7 +177,8 @@ function MiniLineChart({
                     fontWeight: "700",
                   }}
                 >
-                  {point.value}{unit}
+                  {point.value}
+                  {unit}
                 </Text>
               )}
             </View>
@@ -215,27 +219,42 @@ function MiniLineChart({
 export default function HistoryScreen() {
   const [foodHistory, setFoodHistory] = useState<MealEntry[]>([]);
   const [profileHistory, setProfileHistory] = useState<ProfileSnapshot[]>([]);
-  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<MealEntry | null>(null);
+  const [selectedHistoryEntry, setSelectedHistoryEntry] =
+    useState<MealEntry | null>(null);
   const [grams, setGrams] = useState("100");
   const [chartMetric, setChartMetric] = useState<"weight" | "height">("weight");
+  const [metricsExpanded, setMetricsExpanded] = useState(true);
+  const [foodsExpanded, setFoodsExpanded] = useState(true);
   const { width: screenWidth } = useWindowDimensions();
 
+  function toggleMetricsExpanded() {
+    setMetricsExpanded((prev) => !prev);
+  }
+
+  function toggleFoodsExpanded() {
+    setFoodsExpanded((prev) => !prev);
+  }
+
   function reload() {
-    Promise.all([getFoodHistory(), getProfileHistory()]).then(([mealData, historyData]) => {
-      setFoodHistory(mealData);
-      setProfileHistory(historyData);
-    });
+    Promise.all([getFoodHistory(), getProfileHistory()]).then(
+      ([mealData, historyData]) => {
+        setFoodHistory(mealData);
+        setProfileHistory(historyData);
+      },
+    );
   }
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
 
-      Promise.all([getFoodHistory(), getProfileHistory()]).then(([mealData, historyData]) => {
-        if (!active) return;
-        setFoodHistory(mealData);
-        setProfileHistory(historyData);
-      });
+      Promise.all([getFoodHistory(), getProfileHistory()]).then(
+        ([mealData, historyData]) => {
+          if (!active) return;
+          setFoodHistory(mealData);
+          setProfileHistory(historyData);
+        },
+      );
 
       return () => {
         active = false;
@@ -264,8 +283,10 @@ export default function HistoryScreen() {
   async function handleRelog(mealType: (typeof MEAL_TYPES)[number]) {
     if (!selectedHistoryEntry) return;
     const parsedGrams = parseFloat(grams);
-    const validGrams = Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : 100;
-    const servingMultiplier = validGrams / selectedHistoryEntry.food.servingSize;
+    const validGrams =
+      Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : 100;
+    const servingMultiplier =
+      validGrams / selectedHistoryEntry.food.servingSize;
 
     const entry: MealEntry = {
       id: generateId(),
@@ -277,24 +298,42 @@ export default function HistoryScreen() {
     };
 
     await addMeal(entry);
-    Alert.alert("Logged", `${selectedHistoryEntry.food.name} added to ${mealType}.`);
+    Alert.alert(
+      "Logged",
+      `${selectedHistoryEntry.food.name} added to ${mealType}.`,
+    );
     setSelectedHistoryEntry(null);
     setGrams("100");
     reload();
   }
 
-  const recentMeals = useMemo(
-    () =>
-      [...foodHistory]
-        .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime())
-        .slice(0, 20),
-    [foodHistory],
-  );
+  const recentMeals = useMemo(() => {
+    const sorted = [...foodHistory]
+      .sort(
+        (a, b) =>
+          new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime(),
+      )
+      .slice(0, 20);
+
+    // Remove duplicates by food name, keeping only the most recent
+    const seen = new Set<string>();
+    return sorted.filter((entry) => {
+      const foodKey = entry.food.name;
+      if (seen.has(foodKey)) {
+        return false;
+      }
+      seen.add(foodKey);
+      return true;
+    });
+  }, [foodHistory]);
 
   const bodyTimeline = useMemo(
     () =>
       [...profileHistory]
-        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+        .sort(
+          (a, b) =>
+            new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+        )
         .slice(0, 12),
     [profileHistory],
   );
@@ -302,10 +341,14 @@ export default function HistoryScreen() {
   // Chronological order for chart (oldest → newest)
   const chartData = useMemo(() => {
     const sorted = [...profileHistory].sort(
-      (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
+      (a, b) =>
+        new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
     );
     return sorted.map((s) => ({
-      label: new Date(s.recordedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: new Date(s.recordedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
       value: chartMetric === "weight" ? s.weightKg : s.heightCm,
     }));
   }, [profileHistory, chartMetric]);
@@ -314,11 +357,26 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weight & Height Over Time</Text>
-          <Text style={styles.sectionSub}>Saved from your profile updates</Text>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Weight & Height Over Time</Text>
+              <Text style={styles.sectionSub}>
+                Saved from your profile updates
+              </Text>
+            </View>
+            <TouchableOpacity onPress={toggleMetricsExpanded} hitSlop={8}>
+              <Ionicons
+                name={metricsExpanded ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
 
           {profileHistory.length === 0 ? (
-            <Text style={styles.emptyText}>Save your profile to start tracking body stats over time.</Text>
+            <Text style={styles.emptyText}>
+              Save your profile to start tracking body stats over time.
+            </Text>
           ) : (
             <>
               {/* Metric toggle */}
@@ -348,70 +406,122 @@ export default function HistoryScreen() {
               <View style={styles.chartContainer}>
                 <MiniLineChart
                   data={chartData}
-                  color={chartMetric === "weight" ? Colors.bar : Colors.proteine}
+                  color={
+                    chartMetric === "weight" ? Colors.bar : Colors.proteine
+                  }
                   unit={chartMetric === "weight" ? "kg" : "cm"}
                   width={screenWidth - 32 - 32 - 16}
                 />
               </View>
 
               {/* History rows */}
-              {bodyTimeline.map((snapshot) => (
-                <View key={snapshot.id} style={styles.timelineRow}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <View style={styles.timelineHeader}>
-                      <Text style={styles.timelineDate}>{formatDateTime(snapshot.recordedAt)}</Text>
-                      <TouchableOpacity onPress={() => handleDeleteSnapshot(snapshot)} hitSlop={8}>
-                        <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.metricRow}>
-                      <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{snapshot.weightKg}</Text>
-                        <Text style={styles.metricLabel}>kg</Text>
+              {metricsExpanded && (
+                <>
+                  {bodyTimeline.map((snapshot) => (
+                    <View key={snapshot.id} style={styles.timelineRow}>
+                      <View style={styles.timelineDot} />
+                      <View style={styles.timelineContent}>
+                        <View style={styles.timelineHeader}>
+                          <Text style={styles.timelineDate}>
+                            {formatDateTime(snapshot.recordedAt)}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteSnapshot(snapshot)}
+                            hitSlop={8}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={16}
+                              color={Colors.textDim}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.metricRow}>
+                          <View style={styles.metricCard}>
+                            <Text style={styles.metricValue}>
+                              {snapshot.weightKg}
+                            </Text>
+                            <Text style={styles.metricLabel}>kg</Text>
+                          </View>
+                          <View style={styles.metricCard}>
+                            <Text style={styles.metricValue}>
+                              {snapshot.heightCm}
+                            </Text>
+                            <Text style={styles.metricLabel}>cm</Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={styles.metricCard}>
-                        <Text style={styles.metricValue}>{snapshot.heightCm}</Text>
-                        <Text style={styles.metricLabel}>cm</Text>
-                      </View>
                     </View>
-                  </View>
-                </View>
-              ))}
+                  ))}
+                </>
+              )}
             </>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Foods</Text>
-          <Text style={styles.sectionSub}>Last 20 foods you logged, even if later removed from meals</Text>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Recent Foods</Text>
+              <Text style={styles.sectionSub}>
+                Last 20 foods you logged, even if later removed from meals
+              </Text>
+            </View>
+            <TouchableOpacity onPress={toggleFoodsExpanded} hitSlop={8}>
+              <Ionicons
+                name={foodsExpanded ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
 
           {recentMeals.length === 0 ? (
             <Text style={styles.emptyText}>No foods logged yet.</Text>
           ) : (
-            recentMeals.map((entry) => (
-              <View key={`${entry.id}-${entry.loggedAt}`} style={styles.historyRow}>
-                <View style={styles.historyMain}>
-                  <Text style={styles.foodName}>
-                    {entry.food.name.charAt(0).toUpperCase() + entry.food.name.slice(1)}
-                  </Text>
-                  <Text style={styles.historyMeta}>
-                    {entry.mealType} • {mealAmountLabel(entry)} • {formatDateTime(entry.loggedAt)}
-                  </Text>
-                </View>
-                <Text style={styles.calories}>{Math.round(entry.food.calories * entry.servings)} kcal</Text>
-                <TouchableOpacity
-                  style={styles.addBtn}
-                  onPress={() => {
-                    setSelectedHistoryEntry(entry);
-                    setGrams(String(Math.max(25, Math.round(entry.food.servingSize * entry.servings))));
-                  }}
-                  hitSlop={8}
-                >
-                  <Ionicons name="add" size={16} color={Colors.white} />
-                </TouchableOpacity>
-              </View>
-            ))
+            foodsExpanded && (
+              <>
+                {recentMeals.map((entry) => (
+                  <View
+                    key={`${entry.id}-${entry.loggedAt}`}
+                    style={styles.historyRow}
+                  >
+                    <View style={styles.historyMain}>
+                      <Text style={styles.foodName}>
+                        {entry.food.name.charAt(0).toUpperCase() +
+                          entry.food.name.slice(1)}
+                      </Text>
+                      <Text style={styles.historyMeta}>
+                        {entry.mealType} • {mealAmountLabel(entry)} •{" "}
+                        {formatDateTime(entry.loggedAt)}
+                      </Text>
+                    </View>
+                    <Text style={styles.calories}>
+                      {Math.round(entry.food.calories * entry.servings)} kcal
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.addBtn}
+                      onPress={() => {
+                        setSelectedHistoryEntry(entry);
+                        setGrams(
+                          String(
+                            Math.max(
+                              25,
+                              Math.round(
+                                entry.food.servingSize * entry.servings,
+                              ),
+                            ),
+                          ),
+                        );
+                      }}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="add" size={16} color={Colors.white} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            )
           )}
         </View>
       </ScrollView>
@@ -435,15 +545,23 @@ export default function HistoryScreen() {
         >
           <View style={styles.modalSheet}>
             <View style={styles.handle} />
-            <Text style={styles.modalTitle}>{selectedHistoryEntry?.food.name}</Text>
+            <Text style={styles.modalTitle}>
+              {selectedHistoryEntry?.food.name}
+            </Text>
             <Text style={styles.modalSub}>
-              {selectedHistoryEntry ? `${Math.round(selectedHistoryEntry.food.calories)} kcal / 100g` : ""}
+              {selectedHistoryEntry
+                ? `${Math.round(selectedHistoryEntry.food.calories)} kcal / 100g`
+                : ""}
             </Text>
 
             <View style={styles.gramsRow}>
               <TouchableOpacity
                 style={styles.gramsBtn}
-                onPress={() => setGrams(String(Math.max(25, (parseFloat(grams) || 100) - 25)))}
+                onPress={() =>
+                  setGrams(
+                    String(Math.max(25, (parseFloat(grams) || 100) - 25)),
+                  )
+                }
               >
                 <Text style={styles.gramsBtnText}>−</Text>
               </TouchableOpacity>
@@ -459,7 +577,9 @@ export default function HistoryScreen() {
               </View>
               <TouchableOpacity
                 style={styles.gramsBtn}
-                onPress={() => setGrams(String((parseFloat(grams) || 100) + 25))}
+                onPress={() =>
+                  setGrams(String((parseFloat(grams) || 100) + 25))
+                }
               >
                 <Text style={styles.gramsBtnText}>+</Text>
               </TouchableOpacity>
@@ -468,15 +588,40 @@ export default function HistoryScreen() {
             <View style={styles.macroRow}>
               {(() => {
                 const enteredGrams = Math.max(0, parseFloat(grams) || 0);
-                const s = enteredGrams / (selectedHistoryEntry?.food.servingSize ?? 100);
+                const s =
+                  enteredGrams /
+                  (selectedHistoryEntry?.food.servingSize ?? 100);
                 return [
-                  { label: "Cal", value: Math.round((selectedHistoryEntry?.food.calories ?? 0) * s), color: Colors.bar },
-                  { label: "Protein", value: `${Math.round((selectedHistoryEntry?.food.protein ?? 0) * s)}g`, color: Colors.proteine },
-                  { label: "Carbs", value: `${Math.round((selectedHistoryEntry?.food.carbs ?? 0) * s)}g`, color: Colors.carbohydrates },
-                  { label: "Fat", value: `${Math.round((selectedHistoryEntry?.food.fat ?? 0) * s)}g`, color: Colors.fats },
+                  {
+                    label: "Cal",
+                    value: Math.round(
+                      (selectedHistoryEntry?.food.calories ?? 0) * s,
+                    ),
+                    color: Colors.bar,
+                  },
+                  {
+                    label: "Protein",
+                    value: `${Math.round((selectedHistoryEntry?.food.protein ?? 0) * s)}g`,
+                    color: Colors.proteine,
+                  },
+                  {
+                    label: "Carbs",
+                    value: `${Math.round((selectedHistoryEntry?.food.carbs ?? 0) * s)}g`,
+                    color: Colors.carbohydrates,
+                  },
+                  {
+                    label: "Fat",
+                    value: `${Math.round((selectedHistoryEntry?.food.fat ?? 0) * s)}g`,
+                    color: Colors.fats,
+                  },
                 ].map((macro) => (
-                  <View key={macro.label} style={[styles.macroPill, { borderColor: macro.color }]}>
-                    <Text style={[styles.macroValue, { color: macro.color }]}>{macro.value}</Text>
+                  <View
+                    key={macro.label}
+                    style={[styles.macroPill, { borderColor: macro.color }]}
+                  >
+                    <Text style={[styles.macroValue, { color: macro.color }]}>
+                      {macro.value}
+                    </Text>
                     <Text style={styles.macroLabel}>{macro.label}</Text>
                   </View>
                 ));
@@ -491,7 +636,12 @@ export default function HistoryScreen() {
                   style={[styles.mealBtn, { borderColor: MEAL_COLORS[type] }]}
                   onPress={() => handleRelog(type)}
                 >
-                  <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[type] }]} />
+                  <View
+                    style={[
+                      styles.mealDot,
+                      { backgroundColor: MEAL_COLORS[type] },
+                    ]}
+                  />
                   <Text style={styles.mealBtnText}>{type}</Text>
                 </TouchableOpacity>
               ))}
@@ -506,9 +656,18 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 16, paddingBottom: 28, gap: 14 },
-  section: { backgroundColor: Colors.secondaryBackground, borderRadius: 12, padding: 16 },
+  section: {
+    backgroundColor: Colors.secondaryBackground,
+    borderRadius: 12,
+    padding: 16,
+  },
   sectionTitle: { color: Colors.white, fontSize: 18, fontWeight: "700" },
-  sectionSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 14 },
+  sectionSub: {
+    color: Colors.textDim,
+    fontSize: 13,
+    marginTop: 4,
+    marginBottom: 14,
+  },
   emptyText: { color: Colors.textDim, fontSize: 14 },
   historyRow: {
     flexDirection: "row",
@@ -545,6 +704,12 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   timelineDate: { color: Colors.text, fontSize: 13 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
   timelineHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -610,8 +775,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: { color: Colors.white, fontSize: 20, fontWeight: "700" },
-  modalSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 16 },
-  gramsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 20 },
+  modalSub: {
+    color: Colors.textDim,
+    fontSize: 13,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  gramsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 20,
+  },
   gramsBtn: {
     width: 40,
     height: 40,
@@ -620,9 +796,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  gramsBtnText: { color: Colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
+  gramsBtnText: {
+    color: Colors.white,
+    fontSize: 22,
+    fontWeight: "300",
+    lineHeight: 26,
+  },
   gramsInputWrap: { alignItems: "center" },
-  gramsInput: { color: Colors.white, fontSize: 28, fontWeight: "700", textAlign: "center", minWidth: 60 },
+  gramsInput: {
+    color: Colors.white,
+    fontSize: 28,
+    fontWeight: "700",
+    textAlign: "center",
+    minWidth: 60,
+  },
   gramsLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroPill: {
