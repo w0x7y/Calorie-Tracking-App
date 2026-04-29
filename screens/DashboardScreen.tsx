@@ -12,7 +12,14 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { deleteMeal, getMealsByDate, getProfile, getWaterByDate, setWaterByDate } from "../utils/storage";
+import {
+  deleteMeal,
+  getMealsByDate,
+  getProfile,
+  getWaterByDate,
+  setWaterByDate,
+  updateMeal,
+} from "../utils/storage";
 import { calculateTotals, formatDate, todayISO } from "../utils/nutrition";
 import { DailyTotals, MealEntry } from "../types";
 import { Colors } from "../style/theme";
@@ -50,6 +57,10 @@ function shortDayLabel(iso: string): { weekday: string; day: string } {
   };
 }
 
+function mealEntryGrams(entry: MealEntry): number {
+  return Math.max(0, Math.round(entry.food.servingSize * entry.servings));
+}
+
 export default function DashboardScreen() {
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [totals, setTotals] = useState<DailyTotals>({
@@ -64,6 +75,9 @@ export default function DashboardScreen() {
   const [waterGoalMl, setWaterGoalMl] = useState(DEFAULT_WATER_GOAL_ML);
   const [waterModalVisible, setWaterModalVisible] = useState(false);
   const [draftWaterMl, setDraftWaterMl] = useState("100");
+  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
+  const [draftMealType, setDraftMealType] = useState<(typeof MEAL_TYPES)[number]>("Breakfast");
+  const [draftMealGrams, setDraftMealGrams] = useState("100");
 
   const today = todayISO();
   const { width: screenWidth } = useWindowDimensions();
@@ -165,6 +179,36 @@ export default function DashboardScreen() {
     setWaterMl(safeAmount);
     await setWaterByDate(selectedDate, safeAmount);
     setWaterModalVisible(false);
+  }
+
+  function openMealEditor(entry: MealEntry) {
+    setEditingMeal(entry);
+    setDraftMealType(entry.mealType);
+    setDraftMealGrams(String(Math.max(25, mealEntryGrams(entry))));
+  }
+
+  function closeMealEditor() {
+    setEditingMeal(null);
+    setDraftMealType("Breakfast");
+    setDraftMealGrams("100");
+  }
+
+  async function handleSaveMealEdit() {
+    if (!editingMeal) return;
+    const parsedGrams = parseFloat(draftMealGrams);
+    const validGrams = Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : mealEntryGrams(editingMeal);
+    const baseServingSize = editingMeal.food.servingSize > 0 ? editingMeal.food.servingSize : 100;
+
+    const updatedEntry: MealEntry = {
+      ...editingMeal,
+      mealType: draftMealType,
+      servings: validGrams / baseServingSize,
+      date: selectedDate,
+    };
+
+    await updateMeal(updatedEntry);
+    closeMealEditor();
+    reload(selectedDate);
   }
 
   const remaining = goalCalories - totals.calories;
@@ -283,9 +327,14 @@ export default function DashboardScreen() {
                       {e.food.name.charAt(0).toUpperCase() + e.food.name.slice(1)}
                     </Text>
                     <Text style={styles.foodCals}>{Math.round(e.food.calories * e.servings)} kcal</Text>
-                    <TouchableOpacity onPress={() => handleDelete(e.id, e.food.name)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
-                    </TouchableOpacity>
+                    <View style={styles.foodActions}>
+                      <TouchableOpacity onPress={() => openMealEditor(e)} hitSlop={8}>
+                        <Ionicons name="create-outline" size={16} color={Colors.textDim} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDelete(e.id, e.food.name)} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))
               )}
@@ -333,6 +382,76 @@ export default function DashboardScreen() {
 
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmWater}>
               <Text style={styles.confirmBtnText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={!!editingMeal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeMealEditor}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeMealEditor}>
+          <View style={styles.modalSheet}>
+            <View style={styles.handle} />
+            <Text style={styles.modalTitle}>Edit Logged Meal</Text>
+            <Text style={styles.modalSub}>{editingMeal?.food.name}</Text>
+
+            <View style={styles.waterInputWrap}>
+              <TextInput
+                style={styles.waterInput}
+                value={draftMealGrams}
+                onChangeText={setDraftMealGrams}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+              />
+              <Text style={styles.waterInputLabel}>grams</Text>
+            </View>
+
+            <View style={styles.modalMealGrid}>
+              {MEAL_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.modalMealBtn,
+                    { borderColor: MEAL_COLORS[type] },
+                    draftMealType === type && styles.modalMealBtnActive,
+                  ]}
+                  onPress={() => setDraftMealType(type)}
+                >
+                  <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[type] }]} />
+                  <Text style={styles.mealBtnText}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.editMacroRow}>
+              {(() => {
+                const grams = Math.max(0, parseFloat(draftMealGrams) || 0);
+                const servingSize = editingMeal?.food.servingSize ?? 100;
+                const multiplier = grams / servingSize;
+                return [
+                  { label: "Cal", value: Math.round((editingMeal?.food.calories ?? 0) * multiplier), color: Colors.bar },
+                  { label: "Protein", value: `${Math.round((editingMeal?.food.protein ?? 0) * multiplier)}g`, color: Colors.proteine },
+                  { label: "Carbs", value: `${Math.round((editingMeal?.food.carbs ?? 0) * multiplier)}g`, color: Colors.carbohydrates },
+                  { label: "Fat", value: `${Math.round((editingMeal?.food.fat ?? 0) * multiplier)}g`, color: Colors.fats },
+                ].map((macro) => (
+                  <View key={macro.label} style={[styles.editMacroPill, { borderColor: macro.color }]}>
+                    <Text style={[styles.editMacroValue, { color: macro.color }]}>{macro.value}</Text>
+                    <Text style={styles.editMacroLabel}>{macro.label}</Text>
+                  </View>
+                ));
+              })()}
+            </View>
+
+            <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveMealEdit}>
+              <Text style={styles.confirmBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={closeMealEditor}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -417,6 +536,7 @@ const styles = StyleSheet.create({
   foodDot: { width: 7, height: 7, borderRadius: 4 },
   foodName: { color: Colors.text, flex: 1, fontSize: 14 },
   foodCals: { color: Colors.textDim, fontSize: 13 },
+  foodActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   waterTopCard: {
     flex: 1,
     minHeight: 164,
@@ -513,4 +633,32 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   confirmBtnText: { color: Colors.black, fontSize: 15, fontWeight: "700" },
+  modalMealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 },
+  modalMealBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "47%",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: Colors.tabBackground,
+  },
+  modalMealBtnActive: {
+    backgroundColor: Colors.background,
+  },
+  mealDot: { width: 10, height: 10, borderRadius: 5 },
+  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  editMacroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
+  editMacroPill: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  editMacroValue: { fontSize: 15, fontWeight: "700" },
+  editMacroLabel: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
+  cancelBtn: { alignItems: "center", paddingTop: 12 },
+  cancelBtnText: { color: Colors.textDim, fontSize: 15 },
 });

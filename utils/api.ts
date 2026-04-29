@@ -2,6 +2,7 @@ import { Food } from "../types";
 import { mapApiToFood } from "./nutrition";
 
 const BASE = "https://api.calorieninjas.com/v1/nutrition";
+const OPEN_FOOD_FACTS_BASE = "https://world.openfoodfacts.net/api/v2/product";
 const API_KEY = process.env.EXPO_PUBLIC_CALORIE_NINJAS_API_KEY;
 
 const SEARCH_VARIANTS: Record<string, string[]> = {
@@ -24,6 +25,22 @@ function uniqueFoods(foods: Food[]): Food[] {
     seen.add(key);
     return true;
   });
+}
+
+function parseOpenFoodFactsNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+export interface BarcodeLookupResult {
+  barcode: string;
+  name: string;
+  brand?: string;
+  food: Food;
 }
 
 export async function getNutrition(query: string): Promise<Food[]> {
@@ -70,4 +87,70 @@ export async function searchFoods(query: string): Promise<Food[]> {
   return uniqueFoods(
     [...baseResults, ...variantResults.filter((food): food is Food => food !== null)],
   ).slice(0, 5);
+}
+
+export async function lookupProductByBarcode(barcode: string): Promise<BarcodeLookupResult> {
+  const trimmedBarcode = barcode.trim();
+  if (!trimmedBarcode) {
+    throw new Error("Barcode is required.");
+  }
+
+  const fields = [
+    "code",
+    "product_name",
+    "brands",
+    "nutriments",
+  ].join(",");
+
+  const res = await fetch(`${OPEN_FOOD_FACTS_BASE}/${encodeURIComponent(trimmedBarcode)}?fields=${encodeURIComponent(fields)}`);
+
+  if (!res.ok) {
+    throw new Error(`Barcode lookup failed with status ${res.status}.`);
+  }
+
+  const data = await res.json();
+  if (data?.status !== 1 || !data?.product) {
+    throw new Error("Product not found for this barcode.");
+  }
+
+  const product = data.product;
+  const nutriments = product.nutriments ?? {};
+  const calories =
+    parseOpenFoodFactsNumber(nutriments["energy-kcal_100g"]) ??
+    parseOpenFoodFactsNumber(nutriments["energy-kcal"]) ??
+    parseOpenFoodFactsNumber(nutriments.energy_kcal_100g);
+
+  const sodiumGrams =
+    parseOpenFoodFactsNumber(nutriments.sodium_100g) ??
+    (() => {
+      const salt = parseOpenFoodFactsNumber(nutriments.salt_100g);
+      return salt === undefined ? undefined : salt * 0.393;
+    })();
+
+  if (!product.product_name || calories === undefined) {
+    throw new Error("This product is missing enough nutrition data to import.");
+  }
+
+  const food: Food = {
+    id: trimmedBarcode,
+    name: product.product_name,
+    brand: typeof product.brands === "string" && product.brands.trim() ? product.brands.trim() : undefined,
+    calories,
+    protein: parseOpenFoodFactsNumber(nutriments.proteins_100g) ?? 0,
+    carbs: parseOpenFoodFactsNumber(nutriments.carbohydrates_100g) ?? 0,
+    fat: parseOpenFoodFactsNumber(nutriments.fat_100g) ?? 0,
+    sugar: parseOpenFoodFactsNumber(nutriments.sugars_100g),
+    fiber: parseOpenFoodFactsNumber(nutriments.fiber_100g),
+    sodium: sodiumGrams === undefined ? undefined : sodiumGrams * 1000,
+    saturatedFat: parseOpenFoodFactsNumber(nutriments["saturated-fat_100g"]),
+    servingSize: 100,
+    servingUnit: "g",
+  };
+
+  return {
+    barcode: trimmedBarcode,
+    name: food.name,
+    brand: food.brand,
+    food,
+  };
 }

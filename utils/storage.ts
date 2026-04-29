@@ -33,6 +33,16 @@ export async function deleteMeal(id: string): Promise<void> {
   await AsyncStorage.setItem(KEYS.MEALS, JSON.stringify(filtered));
 }
 
+export async function updateMeal(updatedEntry: MealEntry): Promise<void> {
+  const meals = await getMeals();
+  const nextMeals = meals.map((meal) => (meal.id === updatedEntry.id ? updatedEntry : meal));
+  await AsyncStorage.setItem(KEYS.MEALS, JSON.stringify(nextMeals));
+
+  const history = await getFoodHistory();
+  const nextHistory = history.map((meal) => (meal.id === updatedEntry.id ? updatedEntry : meal));
+  await AsyncStorage.setItem(KEYS.FOOD_HISTORY, JSON.stringify(nextHistory));
+}
+
 export async function getMealsByDate(date: string): Promise<MealEntry[]> {
   const meals = await getMeals();
   return meals.filter((m) => m.date === date);

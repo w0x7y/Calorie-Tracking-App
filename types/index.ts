@@ -68,6 +68,7 @@ export interface CustomItem {
   kind: "food" | "product" | "recipe";
   name: string;
   brand?: string;
+  barcode?: string;
   createdAt: string; // ISO datetime string
   food: Food;
   ingredients?: CustomRecipeIngredient[];

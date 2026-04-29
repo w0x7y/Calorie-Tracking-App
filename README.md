@@ -20,6 +20,7 @@ This app is designed for fast daily use:
 - jump between `Dashboard`, `Log`, `Search`, `History`, and `Profile`
 - see calories, macros, and water at a glance
 - save your own foods, products, and recipes so logging gets easier over time
+- scan packaged products by barcode and review nutrition before saving
 - search nutrition data from a live API when you need something new
 - keep body stats and calorie targets in one place
 
@@ -48,6 +49,7 @@ It is a lightweight tracker with a dark, focused UI rather than a bloated nutrit
 ### Custom Logging
 
 - create reusable foods and packaged products with per-100g values
+- scan product barcodes and import them into saved products with a review step
 - store optional details like sugar, fiber, sodium, and saturated fat
 - save full recipes built from multiple ingredients
 - log saved items directly into a meal with custom gram amounts
@@ -180,15 +182,6 @@ Use `.env.example` as the starter template for local setup.
 - the app uses a dark theme by default
 - profile history saves weight and height snapshots each time the profile is stored
 - deleting a meal removes it from the daily meal log, but food history remains available for quick re-logging
-
-## Good Next Steps
-
-- move the API key to env config
-- add screenshots or a demo gif
-- add tests for storage and nutrition math
-- support editing existing custom items
-- add trend charts for calories, weight, macros, and water
-- add backup or cloud sync
 
 ## License
 
