@@ -42,6 +42,8 @@ type ScannedProductDraft = {
   barcode: string;
   name: string;
   brand: string;
+  servingSize: string;
+  servingUnit: string;
   calories: string;
   protein: string;
   carbs: string;
@@ -75,6 +77,8 @@ function buildScannedDraft(result: BarcodeLookupResult): ScannedProductDraft {
     barcode: result.barcode,
     name: result.name,
     brand: result.brand ?? "",
+    servingSize: result.food.packageServingSize === undefined ? "" : String(result.food.packageServingSize),
+    servingUnit: result.food.packageServingUnit ?? result.food.packageServingLabel ?? "",
     calories: String(Math.round(result.food.calories)),
     protein: String(Math.round(result.food.protein)),
     carbs: String(Math.round(result.food.carbs)),
@@ -274,6 +278,8 @@ export default function LogScreen() {
     const protein = parseNumber(scannedDraft.protein);
     const carbs = parseNumber(scannedDraft.carbs);
     const fat = parseNumber(scannedDraft.fat);
+    const packageServingSize = parseNumber(scannedDraft.servingSize) ?? undefined;
+    const packageServingUnit = scannedDraft.servingUnit.trim() || undefined;
 
     if (!scannedDraft.name.trim()) {
       Alert.alert("Missing name", "Give the scanned product a name.");
@@ -307,6 +313,10 @@ export default function LogScreen() {
         saturatedFat: parseNumber(scannedDraft.saturatedFat) ?? undefined,
         servingSize: 100,
         servingUnit: "g",
+        packageServingSize,
+        packageServingUnit,
+        packageServingLabel:
+          packageServingSize && packageServingUnit ? `${packageServingSize}${packageServingUnit}` : undefined,
       },
     };
 
@@ -314,7 +324,7 @@ export default function LogScreen() {
     closeScannedReview();
     reload();
     setSelectedItem(item);
-    setLogGrams("100");
+    setLogGrams(packageServingSize ? String(packageServingSize) : "100");
     Alert.alert("Saved", `${item.name} was added to your saved products and is ready to log.`);
   }
 
@@ -608,6 +618,12 @@ export default function LogScreen() {
                         {" • "}
                         {Math.round(item.food.calories)} kcal / 100g
                       </Text>
+                      {item.food.packageServingSize && item.food.packageServingUnit && (
+                        <Text style={styles.savedServing}>
+                          1 serving ({item.food.packageServingSize}
+                          {item.food.packageServingUnit}): {Math.round(item.food.calories * (item.food.packageServingSize / item.food.servingSize))} kcal
+                        </Text>
+                      )}
                       {item.barcode && <Text style={styles.savedBarcode}>Barcode: {item.barcode}</Text>}
                       <Text style={styles.savedMacros}>{formatMacros(item.food)}</Text>
                     </View>
@@ -625,7 +641,7 @@ export default function LogScreen() {
                     style={styles.logNowButton}
                     onPress={() => {
                       setSelectedItem(item);
-                      setLogGrams("100");
+                      setLogGrams(item.food.packageServingSize ? String(item.food.packageServingSize) : "100");
                     }}
                   >
                     <Text style={styles.logNowText}>Log This Item</Text>
@@ -984,6 +1000,23 @@ export default function LogScreen() {
                 placeholder="Brand"
                 placeholderTextColor={Colors.textDim}
               />
+              <View style={styles.twoColRow}>
+                <TextInput
+                  style={[styles.input, styles.halfField]}
+                  value={scannedDraft?.servingSize ?? ""}
+                  onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, servingSize: text } : current))}
+                  keyboardType="decimal-pad"
+                  placeholder="Serving size"
+                  placeholderTextColor={Colors.textDim}
+                />
+                <TextInput
+                  style={[styles.input, styles.halfField]}
+                  value={scannedDraft?.servingUnit ?? ""}
+                  onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, servingUnit: text } : current))}
+                  placeholder="Serving unit"
+                  placeholderTextColor={Colors.textDim}
+                />
+              </View>
               <TextInput
                 style={styles.input}
                 value={scannedDraft?.calories ?? ""}
@@ -1095,6 +1128,12 @@ export default function LogScreen() {
             <View style={styles.handle} />
             <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
             <Text style={styles.modalSub}>{selectedItem ? `${Math.round(selectedItem.food.calories)} kcal / 100g` : ""}</Text>
+            {selectedItem?.food.packageServingSize && selectedItem.food.packageServingUnit && (
+              <Text style={styles.modalServingSub}>
+                1 serving ({selectedItem.food.packageServingSize}
+                {selectedItem.food.packageServingUnit}): {Math.round(selectedItem.food.calories * (selectedItem.food.packageServingSize / selectedItem.food.servingSize))} kcal
+              </Text>
+            )}
 
             <View style={styles.gramsRow}>
               <TouchableOpacity
@@ -1185,6 +1224,7 @@ const styles = StyleSheet.create({
   savedTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   savedName: { color: Colors.white, fontSize: 16, fontWeight: "700" },
   savedMeta: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
+  savedServing: { color: "#BEEFFF", fontSize: 11, marginTop: 4 },
   savedBarcode: { color: Colors.textDim, fontSize: 11, marginTop: 4 },
   savedMacros: { color: Colors.text, fontSize: 12, marginTop: 6 },
   savedActions: { flexDirection: "row", alignItems: "center", gap: 14 },
@@ -1394,6 +1434,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { color: Colors.white, fontSize: 20, fontWeight: "700" },
   modalSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  modalServingSub: { color: "#BEEFFF", fontSize: 12, marginTop: -10, marginBottom: 14 },
   gramsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 20 },
   gramsBtn: {
     width: 40,

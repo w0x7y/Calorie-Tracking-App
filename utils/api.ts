@@ -36,6 +36,16 @@ function parseOpenFoodFactsNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function parseServingUnit(servingSizeText: unknown): string | undefined {
+  if (typeof servingSizeText !== "string") return undefined;
+  const normalized = servingSizeText.trim().toLowerCase();
+  if (!normalized) return undefined;
+
+  if (normalized.includes("ml")) return "ml";
+  if (normalized.includes("g")) return "g";
+  return undefined;
+}
+
 export interface BarcodeLookupResult {
   barcode: string;
   name: string;
@@ -100,6 +110,8 @@ export async function lookupProductByBarcode(barcode: string): Promise<BarcodeLo
     "product_name",
     "brands",
     "nutriments",
+    "serving_quantity",
+    "serving_size",
   ].join(",");
 
   const res = await fetch(`${OPEN_FOOD_FACTS_BASE}/${encodeURIComponent(trimmedBarcode)}?fields=${encodeURIComponent(fields)}`);
@@ -126,6 +138,12 @@ export async function lookupProductByBarcode(barcode: string): Promise<BarcodeLo
       const salt = parseOpenFoodFactsNumber(nutriments.salt_100g);
       return salt === undefined ? undefined : salt * 0.393;
     })();
+  const packageServingSize = parseOpenFoodFactsNumber(product.serving_quantity);
+  const packageServingLabel =
+    typeof product.serving_size === "string" && product.serving_size.trim()
+      ? product.serving_size.trim()
+      : undefined;
+  const packageServingUnit = parseServingUnit(product.serving_size);
 
   if (!product.product_name || calories === undefined) {
     throw new Error("This product is missing enough nutrition data to import.");
@@ -145,6 +163,9 @@ export async function lookupProductByBarcode(barcode: string): Promise<BarcodeLo
     saturatedFat: parseOpenFoodFactsNumber(nutriments["saturated-fat_100g"]),
     servingSize: 100,
     servingUnit: "g",
+    packageServingSize,
+    packageServingUnit,
+    packageServingLabel,
   };
 
   return {

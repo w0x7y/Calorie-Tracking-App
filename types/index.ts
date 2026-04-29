@@ -13,6 +13,9 @@ export interface Food {
   saturatedFat?: number;
   servingSize: number;
   servingUnit: string; // e.g. "g", "ml", "oz"
+  packageServingSize?: number;
+  packageServingUnit?: string;
+  packageServingLabel?: string;
 }
 
 // A logged meal entry
