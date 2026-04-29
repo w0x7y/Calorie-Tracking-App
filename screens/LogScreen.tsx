@@ -724,7 +724,7 @@ export default function LogScreen() {
               style={styles.input}
               value={customCalories}
               onChangeText={setCustomCalories}
-              keyboardType="decimal-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder="Calories"
               placeholderTextColor={Colors.textDim}
             />
@@ -734,7 +734,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.thirdField]}
                 value={customProtein}
                 onChangeText={setCustomProtein}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Protein"
                 placeholderTextColor={Colors.textDim}
               />
@@ -742,7 +742,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.thirdField]}
                 value={customCarbs}
                 onChangeText={setCustomCarbs}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Carbs"
                 placeholderTextColor={Colors.textDim}
               />
@@ -750,7 +750,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.thirdField]}
                 value={customFat}
                 onChangeText={setCustomFat}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Fat"
                 placeholderTextColor={Colors.textDim}
               />
@@ -761,7 +761,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.halfField]}
                 value={customSugar}
                 onChangeText={setCustomSugar}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Sugar (optional)"
                 placeholderTextColor={Colors.textDim}
               />
@@ -769,7 +769,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.halfField]}
                 value={customFiber}
                 onChangeText={setCustomFiber}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Fiber (optional)"
                 placeholderTextColor={Colors.textDim}
               />
@@ -780,7 +780,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.halfField]}
                 value={customSodium}
                 onChangeText={setCustomSodium}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Salt/Sodium mg (optional)"
                 placeholderTextColor={Colors.textDim}
               />
@@ -788,7 +788,7 @@ export default function LogScreen() {
                 style={[styles.input, styles.halfField]}
                 value={customSaturatedFat}
                 onChangeText={setCustomSaturatedFat}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Sat. fat (optional)"
                 placeholderTextColor={Colors.textDim}
               />
@@ -883,7 +883,7 @@ export default function LogScreen() {
                       style={styles.ingredientInput}
                       value={String(ingredient.grams)}
                       onChangeText={(text) => updateRecipeIngredient(ingredient.id, text)}
-                      keyboardType="decimal-pad"
+                      keyboardType="numbers-and-punctuation"
                       placeholder="grams"
                       placeholderTextColor={Colors.textDim}
                     />
@@ -1031,7 +1031,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.servingSize ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, servingSize: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Serving size"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1047,7 +1047,7 @@ export default function LogScreen() {
                 style={styles.input}
                 value={scannedDraft?.calories ?? ""}
                 onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, calories: text } : current))}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 placeholder="Calories per 100g"
                 placeholderTextColor={Colors.textDim}
               />
@@ -1057,7 +1057,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.thirdField]}
                   value={scannedDraft?.protein ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, protein: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Protein"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1065,7 +1065,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.thirdField]}
                   value={scannedDraft?.carbs ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, carbs: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Carbs"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1073,7 +1073,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.thirdField]}
                   value={scannedDraft?.fat ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, fat: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Fat"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1084,7 +1084,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.sugar ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, sugar: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Sugar"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1092,7 +1092,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.fiber ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, fiber: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Fiber"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1103,7 +1103,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.sodium ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, sodium: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Sodium mg"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1111,7 +1111,7 @@ export default function LogScreen() {
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.saturatedFat ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, saturatedFat: text } : current))}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   placeholder="Sat. fat"
                   placeholderTextColor={Colors.textDim}
                 />
@@ -1173,7 +1173,7 @@ export default function LogScreen() {
                   style={styles.gramsInput}
                   value={logGrams}
                   onChangeText={setLogGrams}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   selectTextOnFocus
                 />
                 <Text style={styles.gramsLabel}>grams</Text>

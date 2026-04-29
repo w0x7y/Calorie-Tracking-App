@@ -155,7 +155,7 @@ export default function SearchScreen() {
                   style={styles.servingsInput}
                   value={grams}
                   onChangeText={setGrams}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   selectTextOnFocus
                 />
                 <Text style={styles.servingsLabel}>

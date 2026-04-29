@@ -200,7 +200,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={age}
               onChangeText={setAge}
-              keyboardType="number-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder="25"
               placeholderTextColor={Colors.textDim}
             />
@@ -211,7 +211,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={weightKg}
               onChangeText={setWeightKg}
-              keyboardType="decimal-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder="70"
               placeholderTextColor={Colors.textDim}
             />
@@ -225,7 +225,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={heightCm}
               onChangeText={setHeightCm}
-              keyboardType="decimal-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder="175"
               placeholderTextColor={Colors.textDim}
             />
@@ -291,7 +291,7 @@ export default function ProfileScreen() {
             style={styles.input}
             value={goalCalories}
             onChangeText={setGoalCalories}
-            keyboardType="number-pad"
+            keyboardType="numbers-and-punctuation"
             placeholder={String(stats.maintenanceCalories)}
             placeholderTextColor={Colors.textDim}
           />
@@ -303,7 +303,7 @@ export default function ProfileScreen() {
             style={styles.input}
             value={waterGoalMl}
             onChangeText={setWaterGoalMl}
-            keyboardType="number-pad"
+            keyboardType="numbers-and-punctuation"
             placeholder={String(DEFAULT_PROFILE.waterGoalMl)}
             placeholderTextColor={Colors.textDim}
           />
@@ -316,7 +316,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={goalProtein}
               onChangeText={setGoalProtein}
-              keyboardType="number-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalProtein)}
               placeholderTextColor={Colors.textDim}
             />
@@ -327,7 +327,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={goalCarbs}
               onChangeText={setGoalCarbs}
-              keyboardType="number-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalCarbs)}
               placeholderTextColor={Colors.textDim}
             />
@@ -338,7 +338,7 @@ export default function ProfileScreen() {
               style={styles.input}
               value={goalFat}
               onChangeText={setGoalFat}
-              keyboardType="number-pad"
+              keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalFat)}
               placeholderTextColor={Colors.textDim}
             />

@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { MealEntry, ProfileSnapshot } from "../types";
+import { MealEntry, ProfileSnapshot, UserProfile } from "../types";
 import {
   addMeal,
   deleteProfileSnapshot,
   getFoodHistory,
   getProfileHistory,
+  getProfile,
+  saveProfile,
 } from "../utils/storage";
 import { generateId, todayISO } from "../utils/nutrition";
 import { Colors } from "../style/theme";
@@ -225,6 +227,9 @@ export default function HistoryScreen() {
   const [chartMetric, setChartMetric] = useState<"weight" | "height">("weight");
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const [foodsExpanded, setFoodsExpanded] = useState(true);
+  const [logModalVisible, setLogModalVisible] = useState(false);
+  const [logWeight, setLogWeight] = useState("");
+  const [logHeight, setLogHeight] = useState("");
   const { width: screenWidth } = useWindowDimensions();
 
   function toggleMetricsExpanded() {
@@ -233,6 +238,43 @@ export default function HistoryScreen() {
 
   function toggleFoodsExpanded() {
     setFoodsExpanded((prev) => !prev);
+  }
+
+  async function handleLogMetrics() {
+    const weight = parseFloat(logWeight);
+    const height = parseFloat(logHeight);
+
+    if (!Number.isFinite(weight) || weight <= 0) {
+      Alert.alert("Invalid", "Please enter a valid weight.");
+      return;
+    }
+
+    if (!Number.isFinite(height) || height <= 0) {
+      Alert.alert("Invalid", "Please enter a valid height.");
+      return;
+    }
+
+    const profile = await getProfile();
+    if (!profile) {
+      Alert.alert(
+        "Error",
+        "Profile not found. Please set up your profile first.",
+      );
+      return;
+    }
+
+    const updatedProfile: UserProfile = {
+      ...profile,
+      weightKg: weight,
+      heightCm: height,
+    };
+
+    await saveProfile(updatedProfile);
+    Alert.alert("Logged", `Weight: ${weight}kg, Height: ${height}cm`);
+    setLogModalVisible(false);
+    setLogWeight("");
+    setLogHeight("");
+    reload();
   }
 
   function reload() {
@@ -364,13 +406,25 @@ export default function HistoryScreen() {
                 Saved from your profile updates
               </Text>
             </View>
-            <TouchableOpacity onPress={toggleMetricsExpanded} hitSlop={8}>
-              <Ionicons
-                name={metricsExpanded ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={Colors.primary}
-              />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                onPress={() => setLogModalVisible(true)}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={20}
+                  color={Colors.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleMetricsExpanded} hitSlop={8}>
+                <Ionicons
+                  name={metricsExpanded ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={Colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {profileHistory.length === 0 ? (
@@ -527,6 +581,63 @@ export default function HistoryScreen() {
       </ScrollView>
 
       <Modal
+        visible={logModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setLogModalVisible(false);
+          setLogWeight("");
+          setLogHeight("");
+        }}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setLogModalVisible(false);
+            setLogWeight("");
+            setLogHeight("");
+          }}
+        >
+          <View style={styles.logModalSheet}>
+            <View style={styles.handle} />
+            <Text style={styles.modalTitle}>Log Weight & Height</Text>
+            <Text style={styles.modalSub}>Track your body measurements</Text>
+
+            <View style={styles.logInputGroup}>
+              <View style={styles.logInputWrapper}>
+                <Text style={styles.logLabel}>Weight (kg)</Text>
+                <TextInput
+                  style={styles.logInput}
+                  placeholder="Enter weight"
+                  placeholderTextColor={Colors.textDim}
+                  keyboardType="numbers-and-punctuation"
+                  value={logWeight}
+                  onChangeText={setLogWeight}
+                />
+              </View>
+
+              <View style={styles.logInputWrapper}>
+                <Text style={styles.logLabel}>Height (cm)</Text>
+                <TextInput
+                  style={styles.logInput}
+                  placeholder="Enter height"
+                  placeholderTextColor={Colors.textDim}
+                  keyboardType="numbers-and-punctuation"
+                  value={logHeight}
+                  onChangeText={setLogHeight}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.saveBtn} onPress={handleLogMetrics}>
+              <Text style={styles.saveBtnText}>Save Metrics</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
         visible={!!selectedHistoryEntry}
         transparent
         animationType="slide"
@@ -570,7 +681,7 @@ export default function HistoryScreen() {
                   style={styles.gramsInput}
                   value={grams}
                   onChangeText={setGrams}
-                  keyboardType="decimal-pad"
+                  keyboardType="numbers-and-punctuation"
                   selectTextOnFocus
                 />
                 <Text style={styles.gramsLabel}>grams</Text>
@@ -834,4 +945,34 @@ const styles = StyleSheet.create({
   },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
   mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  logModalSheet: {
+    backgroundColor: Colors.secondaryBackground,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  logInputGroup: { gap: 16, marginBottom: 20 },
+  logInputWrapper: { gap: 8 },
+  logLabel: { color: Colors.white, fontSize: 14, fontWeight: "600" },
+  logInput: {
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: Colors.white,
+    fontSize: 16,
+  },
+  saveBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  saveBtnText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
 });

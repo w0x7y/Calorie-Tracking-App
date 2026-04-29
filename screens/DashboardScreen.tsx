@@ -384,7 +384,7 @@ export default function DashboardScreen() {
                 style={styles.waterInput}
                 value={draftWaterMl}
                 onChangeText={setDraftWaterMl}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 selectTextOnFocus
               />
               <Text style={styles.waterInputLabel}>ml logged</Text>
@@ -428,7 +428,7 @@ export default function DashboardScreen() {
                 style={styles.waterInput}
                 value={draftMealGrams}
                 onChangeText={setDraftMealGrams}
-                keyboardType="decimal-pad"
+                keyboardType="numbers-and-punctuation"
                 selectTextOnFocus
               />
               <Text style={styles.waterInputLabel}>grams</Text>
