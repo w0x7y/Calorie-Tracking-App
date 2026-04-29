@@ -31,7 +31,8 @@ export default function SearchScreen() {
   const [results, setResults] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [servings, setServings] = useState("1");
+  const [grams, setGrams] = useState("100");
+  const visibleResults = results.slice(0, 5);
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -49,20 +50,22 @@ export default function SearchScreen() {
 
   async function handleLog(mealType: (typeof MEAL_TYPES)[number]) {
     if (!selectedFood) return;
-    const parsedServings = parseFloat(servings);
-    const validServings = isNaN(parsedServings) || parsedServings <= 0 ? 1 : parsedServings;
+    const parsedGrams = parseFloat(grams);
+    const validGrams = isNaN(parsedGrams) || parsedGrams <= 0 ? 100 : parsedGrams;
+    const baseServingSize = selectedFood.servingSize > 0 ? selectedFood.servingSize : 100;
+    const servingMultiplier = validGrams / baseServingSize;
     const entry: MealEntry = {
       id: generateId(),
       food: selectedFood,
       mealType,
-      servings: validServings,
+      servings: servingMultiplier,
       date: todayISO(),
       loggedAt: new Date().toISOString(),
     };
     await addMeal(entry);
     const name = selectedFood.name;
     setSelectedFood(null);
-    setServings("1");
+    setGrams("100");
     Alert.alert("Logged!", `${name} added to ${mealType}`);
   }
 
@@ -88,13 +91,13 @@ export default function SearchScreen() {
       )}
 
       <FlatList
-        data={results}
+        data={visibleResults}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.resultCard}
-            onPress={() => { setSelectedFood(item); setServings("1"); }}
+            onPress={() => { setSelectedFood(item); setGrams("100"); }}
           >
             <View style={styles.resultLeft}>
               <Text style={styles.foodName}>
@@ -122,12 +125,12 @@ export default function SearchScreen() {
         visible={!!selectedFood}
         transparent
         animationType="slide"
-        onRequestClose={() => { setSelectedFood(null); setServings("1"); }}
+        onRequestClose={() => { setSelectedFood(null); setGrams("100"); }}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => { setSelectedFood(null); setServings("1"); }}
+          onPress={() => { setSelectedFood(null); setGrams("100"); }}
         >
           <View style={styles.modalSheet}>
             <View style={styles.handle} />
@@ -141,8 +144,8 @@ export default function SearchScreen() {
               <TouchableOpacity
                 style={styles.servingsBtn}
                 onPress={() => {
-                  const v = Math.max(0.5, (parseFloat(servings) || 1) - 0.5);
-                  setServings(String(v));
+                  const v = Math.max(25, (parseFloat(grams) || 100) - 25);
+                  setGrams(String(v));
                 }}
               >
                 <Text style={styles.servingsBtnText}>−</Text>
@@ -150,20 +153,20 @@ export default function SearchScreen() {
               <View style={styles.servingsInputWrap}>
                 <TextInput
                   style={styles.servingsInput}
-                  value={servings}
-                  onChangeText={setServings}
+                  value={grams}
+                  onChangeText={setGrams}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
                 />
                 <Text style={styles.servingsLabel}>
-                  × {selectedFood?.servingSize}{selectedFood?.servingUnit}
+                  grams
                 </Text>
               </View>
               <TouchableOpacity
                 style={styles.servingsBtn}
                 onPress={() => {
-                  const v = (parseFloat(servings) || 1) + 0.5;
-                  setServings(String(v));
+                  const v = (parseFloat(grams) || 100) + 25;
+                  setGrams(String(v));
                 }}
               >
                 <Text style={styles.servingsBtnText}>+</Text>
@@ -173,7 +176,9 @@ export default function SearchScreen() {
             {/* Live macros */}
             <View style={styles.macroRow}>
               {(() => {
-                const s = Math.max(0, parseFloat(servings) || 0);
+                const enteredGrams = Math.max(0, parseFloat(grams) || 0);
+                const baseServingSize = (selectedFood?.servingSize ?? 0) > 0 ? (selectedFood?.servingSize ?? 100) : 100;
+                const s = enteredGrams / baseServingSize;
                 return [
                   { label: "Cal",     value: Math.round((selectedFood?.calories ?? 0) * s),  color: Colors.bar },
                   { label: "Protein", value: `${Math.round((selectedFood?.protein ?? 0) * s)}g`, color: Colors.proteine },
@@ -202,7 +207,7 @@ export default function SearchScreen() {
               ))}
             </View>
 
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setSelectedFood(null); setServings("1"); }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setSelectedFood(null); setGrams("100"); }}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>

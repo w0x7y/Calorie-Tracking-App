@@ -13,6 +13,10 @@ export function mapApiToFood(apiItem: any): Food {
     protein: apiItem.protein_g,
     carbs: apiItem.carbohydrates_total_g,
     fat: apiItem.fat_total_g,
+    sodium: apiItem.sodium_mg,
+    sugar: apiItem.sugar_g,
+    fiber: apiItem.fiber_g,
+    saturatedFat: apiItem.fat_saturated_g,
     servingSize: apiItem.serving_size_g,
     servingUnit: "g",
   };
