@@ -70,6 +70,9 @@ export default function DashboardScreen() {
     fat: 0,
   });
   const [goalCalories, setGoalCalories] = useState(DEFAULT_GOAL_CALORIES);
+  const [goalProtein, setGoalProtein] = useState(0);
+  const [goalCarbs, setGoalCarbs] = useState(0);
+  const [goalFat, setGoalFat] = useState(0);
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [waterMl, setWaterMl] = useState(0);
   const [waterGoalMl, setWaterGoalMl] = useState(DEFAULT_WATER_GOAL_ML);
@@ -119,6 +122,9 @@ export default function DashboardScreen() {
       setMeals(data);
       setTotals(calculateTotals(data));
       setGoalCalories(profile?.goalCalories || DEFAULT_GOAL_CALORIES);
+      setGoalProtein(profile?.goalProtein || 0);
+      setGoalCarbs(profile?.goalCarbs || 0);
+      setGoalFat(profile?.goalFat || 0);
       setWaterGoalMl(profile?.waterGoalMl || DEFAULT_WATER_GOAL_ML);
       setWaterMl(water);
     });
@@ -295,15 +301,33 @@ export default function DashboardScreen() {
 
         <View style={styles.macroRow}>
           {[
-            { label: "Protein", value: totals.protein, color: Colors.proteine },
-            { label: "Carbs", value: totals.carbs, color: Colors.carbohydrates },
-            { label: "Fat", value: totals.fat, color: Colors.fats },
-          ].map((m) => (
-            <View key={m.label} style={[styles.macroCard, { borderTopColor: m.color }]}>
-              <Text style={styles.macroValue}>{Math.round(m.value)}g</Text>
-              <Text style={styles.macroLabel}>{m.label}</Text>
-            </View>
-          ))}
+            { label: "Protein", value: totals.protein, goal: goalProtein, color: Colors.proteine },
+            { label: "Carbs", value: totals.carbs, goal: goalCarbs, color: Colors.carbohydrates },
+            { label: "Fat", value: totals.fat, goal: goalFat, color: Colors.fats },
+          ].map((m) => {
+            const macroProgress = m.goal > 0 ? Math.min(m.value / m.goal, 1) : 0;
+            return (
+              <View key={m.label} style={[styles.macroCard, { borderTopColor: m.color }]}>
+                <Text style={styles.macroValue}>{Math.round(m.value)}g</Text>
+                <Text style={styles.macroLabel}>{m.label}</Text>
+                {m.goal > 0 && (
+                  <>
+                    <View style={[styles.macroProgressBar, { marginTop: 6 }]}>
+                      <View
+                        style={[
+                          styles.macroProgressFill,
+                          { width: `${macroProgress * 100}%`, backgroundColor: m.color },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.macroGoalText, { color: m.color }]}>
+                      {m.goal}g
+                    </Text>
+                  </>
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {MEAL_TYPES.map((type) => {
@@ -505,6 +529,8 @@ const styles = StyleSheet.create({
   caloriesCard: {
     flex: 1,
     marginBottom: 0,
+    borderWidth: 1,
+    borderColor: "#848484",
   },
   cardTitle: { fontSize: 14, color: Colors.text, marginBottom: 4 },
   bigNumber: { fontSize: 48, fontWeight: "bold", color: Colors.text },
@@ -528,6 +554,14 @@ const styles = StyleSheet.create({
   },
   macroValue: { fontSize: 20, fontWeight: "bold", color: Colors.text },
   macroLabel: { color: Colors.textDim, fontSize: 12 },
+  macroProgressBar: {
+    height: 4,
+    backgroundColor: Colors.rosyGranite,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  macroProgressFill: { height: "100%", borderRadius: 2 },
+  macroGoalText: { fontSize: 10, marginTop: 3, fontWeight: "600" },
   mealHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   mealType: { fontWeight: "600", fontSize: 16, color: Colors.text },
   mealCals: { color: Colors.textDim },
@@ -546,6 +580,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
     marginBottom: 0,
+    borderWidth: 1.5,
+    borderColor: "#5999b2",
   },
   waterFillOverlay: {
     position: "absolute",

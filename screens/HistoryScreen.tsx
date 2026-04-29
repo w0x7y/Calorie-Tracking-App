@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,11 +45,180 @@ function mealAmountLabel(entry: MealEntry): string {
   return `${grams}g`;
 }
 
+// --- Mini chart component ---
+
+type ChartPoint = { label: string; value: number };
+
+function MiniLineChart({
+  data,
+  color,
+  unit,
+  width,
+}: {
+  data: ChartPoint[];
+  color: string;
+  unit: string;
+  width: number;
+}) {
+  if (data.length < 2) {
+    return (
+      <View style={{ alignItems: "center", paddingVertical: 12 }}>
+        <Text style={{ color: Colors.textDim, fontSize: 13 }}>
+          Log at least 2 profile saves to see the chart.
+        </Text>
+      </View>
+    );
+  }
+
+  const CHART_HEIGHT = 90;
+  const LABEL_HEIGHT = 22;
+  const PADDING_H = 24;
+  const plotWidth = width - PADDING_H * 2;
+  const values = data.map((d) => d.value);
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal || 1;
+
+  // Convert value → y position (top = high value)
+  function toY(val: number) {
+    return CHART_HEIGHT - ((val - minVal) / range) * CHART_HEIGHT;
+  }
+
+  // Convert index → x position
+  function toX(index: number) {
+    return PADDING_H + (index / (data.length - 1)) * plotWidth;
+  }
+
+  const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (let i = 0; i < data.length - 1; i++) {
+    segments.push({
+      x1: toX(i),
+      y1: toY(data[i].value),
+      x2: toX(i + 1),
+      y2: toY(data[i + 1].value),
+    });
+  }
+
+  return (
+    <View style={{ width }}>
+      {/* Chart area */}
+      <View style={{ height: CHART_HEIGHT, position: "relative" }}>
+        {/* Horizontal grid lines */}
+        {[0, 0.5, 1].map((pct) => (
+          <View
+            key={pct}
+            style={{
+              position: "absolute",
+              left: PADDING_H,
+              right: PADDING_H,
+              top: pct * CHART_HEIGHT,
+              height: 1,
+              backgroundColor: "rgba(255,255,255,0.05)",
+            }}
+          />
+        ))}
+
+        {/* Line segments rendered as thin rotated views */}
+        {segments.map((seg, i) => {
+          const dx = seg.x2 - seg.x1;
+          const dy = seg.y2 - seg.y1;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          return (
+            <View
+              key={i}
+              style={{
+                position: "absolute",
+                left: seg.x1,
+                top: seg.y1,
+                width: length,
+                height: 2,
+                backgroundColor: color,
+                borderRadius: 1,
+                transformOrigin: "0 50%",
+                transform: [{ rotate: `${angle}deg` }],
+              }}
+            />
+          );
+        })}
+
+        {/* Dots + value labels */}
+        {data.map((point, i) => {
+          const x = toX(i);
+          const y = toY(point.value);
+          const isFirst = i === 0;
+          const isLast = i === data.length - 1;
+          const showLabel = isFirst || isLast || data.length <= 5;
+          return (
+            <View key={i} style={{ position: "absolute", left: x - 4, top: y - 4 }}>
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: color,
+                  borderWidth: 2,
+                  borderColor: Colors.secondaryBackground,
+                }}
+              />
+              {showLabel && (
+                <Text
+                  style={{
+                    position: "absolute",
+                    top: -18,
+                    left: -16,
+                    width: 40,
+                    textAlign: "center",
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: "700",
+                  }}
+                >
+                  {point.value}{unit}
+                </Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* X-axis labels */}
+      <View style={{ height: LABEL_HEIGHT, position: "relative" }}>
+        {data.map((point, i) => {
+          const x = toX(i);
+          const isFirst = i === 0;
+          const isLast = i === data.length - 1;
+          const showLabel = isFirst || isLast || data.length <= 4;
+          if (!showLabel) return null;
+          return (
+            <Text
+              key={i}
+              style={{
+                position: "absolute",
+                left: x - 20,
+                width: 40,
+                textAlign: "center",
+                color: Colors.textDim,
+                fontSize: 9,
+                top: 4,
+              }}
+            >
+              {point.label}
+            </Text>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function HistoryScreen() {
   const [foodHistory, setFoodHistory] = useState<MealEntry[]>([]);
   const [profileHistory, setProfileHistory] = useState<ProfileSnapshot[]>([]);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<MealEntry | null>(null);
   const [grams, setGrams] = useState("100");
+  const [chartMetric, setChartMetric] = useState<"weight" | "height">("weight");
+  const { width: screenWidth } = useWindowDimensions();
 
   function reload() {
     Promise.all([getFoodHistory(), getProfileHistory()]).then(([mealData, historyData]) => {
@@ -129,9 +299,89 @@ export default function HistoryScreen() {
     [profileHistory],
   );
 
+  // Chronological order for chart (oldest → newest)
+  const chartData = useMemo(() => {
+    const sorted = [...profileHistory].sort(
+      (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
+    );
+    return sorted.map((s) => ({
+      label: new Date(s.recordedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      value: chartMetric === "weight" ? s.weightKg : s.heightCm,
+    }));
+  }, [profileHistory, chartMetric]);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Weight & Height Over Time</Text>
+          <Text style={styles.sectionSub}>Saved from your profile updates</Text>
+
+          {profileHistory.length === 0 ? (
+            <Text style={styles.emptyText}>Save your profile to start tracking body stats over time.</Text>
+          ) : (
+            <>
+              {/* Metric toggle */}
+              <View style={styles.chartToggleRow}>
+                {(["weight", "height"] as const).map((metric) => (
+                  <TouchableOpacity
+                    key={metric}
+                    style={[
+                      styles.chartToggleBtn,
+                      chartMetric === metric && styles.chartToggleBtnActive,
+                    ]}
+                    onPress={() => setChartMetric(metric)}
+                  >
+                    <Text
+                      style={[
+                        styles.chartToggleText,
+                        chartMetric === metric && styles.chartToggleTextActive,
+                      ]}
+                    >
+                      {metric === "weight" ? "Weight (kg)" : "Height (cm)"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Chart */}
+              <View style={styles.chartContainer}>
+                <MiniLineChart
+                  data={chartData}
+                  color={chartMetric === "weight" ? Colors.bar : Colors.proteine}
+                  unit={chartMetric === "weight" ? "kg" : "cm"}
+                  width={screenWidth - 32 - 32 - 16}
+                />
+              </View>
+
+              {/* History rows */}
+              {bodyTimeline.map((snapshot) => (
+                <View key={snapshot.id} style={styles.timelineRow}>
+                  <View style={styles.timelineDot} />
+                  <View style={styles.timelineContent}>
+                    <View style={styles.timelineHeader}>
+                      <Text style={styles.timelineDate}>{formatDateTime(snapshot.recordedAt)}</Text>
+                      <TouchableOpacity onPress={() => handleDeleteSnapshot(snapshot)} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.metricRow}>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{snapshot.weightKg}</Text>
+                        <Text style={styles.metricLabel}>kg</Text>
+                      </View>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricValue}>{snapshot.heightCm}</Text>
+                        <Text style={styles.metricLabel}>cm</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Foods</Text>
           <Text style={styles.sectionSub}>Last 20 foods you logged, even if later removed from meals</Text>
@@ -160,39 +410,6 @@ export default function HistoryScreen() {
                 >
                   <Ionicons name="add" size={16} color={Colors.white} />
                 </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weight & Height Over Time</Text>
-          <Text style={styles.sectionSub}>Saved from your profile updates</Text>
-
-          {bodyTimeline.length === 0 ? (
-            <Text style={styles.emptyText}>Save your profile to start tracking body stats over time.</Text>
-          ) : (
-            bodyTimeline.map((snapshot) => (
-              <View key={snapshot.id} style={styles.timelineRow}>
-                <View style={styles.timelineDot} />
-                <View style={styles.timelineContent}>
-                  <View style={styles.timelineHeader}>
-                    <Text style={styles.timelineDate}>{formatDateTime(snapshot.recordedAt)}</Text>
-                    <TouchableOpacity onPress={() => handleDeleteSnapshot(snapshot)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.metricRow}>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{snapshot.weightKg}</Text>
-                      <Text style={styles.metricLabel}>kg</Text>
-                    </View>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{snapshot.heightCm}</Text>
-                      <Text style={styles.metricLabel}>cm</Text>
-                    </View>
-                  </View>
-                </View>
               </View>
             ))
           )}
@@ -343,6 +560,39 @@ const styles = StyleSheet.create({
   },
   metricValue: { color: Colors.white, fontSize: 20, fontWeight: "700" },
   metricLabel: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
+  chartToggleRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  chartToggleBtn: {
+    flex: 1,
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  chartToggleBtnActive: {
+    borderColor: Colors.bar,
+  },
+  chartToggleText: {
+    color: Colors.textDim,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  chartToggleTextActive: {
+    color: Colors.white,
+  },
+  chartContainer: {
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalSheet: {
     backgroundColor: Colors.secondaryBackground,

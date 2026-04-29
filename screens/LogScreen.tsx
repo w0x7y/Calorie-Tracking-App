@@ -93,6 +93,7 @@ function buildScannedDraft(result: BarcodeLookupResult): ScannedProductDraft {
 export default function LogScreen() {
   const [mode, setMode] = useState<LogMode>("saved");
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [savedSearch, setSavedSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<CustomItem | null>(null);
   const [editingItem, setEditingItem] = useState<CustomItem | null>(null);
   const [logGrams, setLogGrams] = useState("100");
@@ -134,6 +135,16 @@ export default function LogScreen() {
     () => [...customItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [customItems],
   );
+
+  const filteredSavedItems = useMemo(() => {
+    const q = savedSearch.trim().toLowerCase();
+    if (!q) return savedItems;
+    return savedItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        (item.brand ?? "").toLowerCase().includes(q),
+    );
+  }, [savedItems, savedSearch]);
 
   const recipeBaseItems = useMemo(
     () => savedItems.filter((item) => item.kind !== "recipe"),
@@ -592,6 +603,19 @@ export default function LogScreen() {
             <Text style={styles.sectionTitle}>Your Saved Items</Text>
             <Text style={styles.sectionSub}>Log your custom foods, products, and recipes anytime.</Text>
 
+            <View style={styles.savedSearchRow}>
+              <Ionicons name="search-outline" size={16} color={Colors.textDim} style={styles.savedSearchIcon} />
+              <TextInput
+                style={styles.savedSearchInput}
+                value={savedSearch}
+                onChangeText={setSavedSearch}
+                placeholder="Search saved items..."
+                placeholderTextColor={Colors.textDim}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+            </View>
+
             <TouchableOpacity style={styles.scanButton} onPress={openScanner}>
               <Ionicons name="scan-outline" size={18} color={Colors.white} />
               <Text style={styles.scanButtonText}>Scan Barcode</Text>
@@ -599,8 +623,10 @@ export default function LogScreen() {
 
             {savedItems.length === 0 ? (
               <Text style={styles.emptyText}>You have not created any custom items yet.</Text>
+            ) : filteredSavedItems.length === 0 ? (
+              <Text style={styles.emptyText}>No items match "{savedSearch}".</Text>
             ) : (
-              savedItems.map((item) => (
+              filteredSavedItems.map((item) => (
                 <View key={item.id} style={styles.savedCard}>
                   <View style={styles.savedHeader}>
                     <View style={styles.savedTitleWrap}>
@@ -1246,6 +1272,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logNowText: { color: Colors.white, fontSize: 14, fontWeight: "700" },
+  savedSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  savedSearchIcon: {
+    marginRight: 8,
+  },
+  savedSearchInput: {
+    flex: 1,
+    color: Colors.white,
+    fontSize: 15,
+    paddingVertical: 11,
+  },
   scanButton: {
     backgroundColor: Colors.tabBackground,
     borderRadius: 10,
