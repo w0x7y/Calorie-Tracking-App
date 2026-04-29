@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  saveBtnText: { color: Colors.white, fontSize: 16, fontWeight: "700" },
+  saveBtnText: { color: Colors.secondaryBackground, fontSize: 16, fontWeight: "700" },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
