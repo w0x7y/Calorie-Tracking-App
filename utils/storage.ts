@@ -106,6 +106,12 @@ export async function saveCustomItem(item: CustomItem): Promise<void> {
   await AsyncStorage.setItem(KEYS.CUSTOM_ITEMS, JSON.stringify([...items, item]));
 }
 
+export async function updateCustomItem(updatedItem: CustomItem): Promise<void> {
+  const items = await getCustomItems();
+  const nextItems = items.map((item) => (item.id === updatedItem.id ? updatedItem : item));
+  await AsyncStorage.setItem(KEYS.CUSTOM_ITEMS, JSON.stringify(nextItems));
+}
+
 export async function deleteCustomItem(id: string): Promise<void> {
   const items = await getCustomItems();
   const filtered = items.filter((item) => item.id !== id);

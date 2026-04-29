@@ -1,13 +1,8 @@
 import { Food } from "../types";
 import { mapApiToFood } from "./nutrition";
 
-// Ideally, move this to a .env file later for security
-const API_KEY = "MbZtuxSKzSoww0g2GTVaQA==Y8mLOGmBxRKNZPgA";
 const BASE = "https://api.calorieninjas.com/v1/nutrition";
-
-const headers = {
-  "X-Api-Key": API_KEY,
-};
+const API_KEY = process.env.EXPO_PUBLIC_CALORIE_NINJAS_API_KEY;
 
 const SEARCH_VARIANTS: Record<string, string[]> = {
   rice: ["white rice", "brown rice", "basmati rice", "jasmine rice", "wild rice"],
@@ -33,9 +28,14 @@ function uniqueFoods(foods: Food[]): Food[] {
 
 export async function getNutrition(query: string): Promise<Food[]> {
   if (!query) return [];
+  if (!API_KEY) {
+    throw new Error("Missing EXPO_PUBLIC_CALORIE_NINJAS_API_KEY. Add it to your environment config.");
+  }
 
   const res = await fetch(`${BASE}?query=${encodeURIComponent(query)}`, {
-    headers,
+    headers: {
+      "X-Api-Key": API_KEY,
+    },
   });
 
   if (!res.ok) {

@@ -19,6 +19,7 @@ import {
   deleteCustomItem,
   getCustomItems,
   saveCustomItem,
+  updateCustomItem,
 } from "../utils/storage";
 import { generateId, todayISO } from "../utils/nutrition";
 import { CustomItem, CustomRecipeIngredient, Food, MealEntry } from "../types";
@@ -46,10 +47,15 @@ function formatMacros(food: Food): string {
   return `${Math.round(food.protein)}P  ${Math.round(food.carbs)}C  ${Math.round(food.fat)}F`;
 }
 
+function toInputValue(value?: number): string {
+  return value === undefined ? "" : String(value);
+}
+
 export default function LogScreen() {
   const [mode, setMode] = useState<LogMode>("saved");
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<CustomItem | null>(null);
+  const [editingItem, setEditingItem] = useState<CustomItem | null>(null);
   const [logGrams, setLogGrams] = useState("100");
 
   const [customKind, setCustomKind] = useState<CustomKind>("food");
@@ -129,6 +135,44 @@ export default function LogScreen() {
     setRecipeSearchResults([]);
   }
 
+  function stopEditing() {
+    setEditingItem(null);
+    resetFoodForm();
+    resetRecipeForm();
+    setMode("saved");
+  }
+
+  function startEditing(item: CustomItem) {
+    setEditingItem(item);
+
+    if (item.kind === "recipe") {
+      setMode("recipe");
+      setRecipeName(item.name);
+      setRecipeIngredients(
+        (item.ingredients ?? []).map((ingredient) => ({
+          ...ingredient,
+          food: { ...ingredient.food },
+        })),
+      );
+      setRecipeQuery("");
+      setRecipeSearchResults([]);
+      return;
+    }
+
+    setMode("food");
+    setCustomKind(item.kind);
+    setCustomName(item.name);
+    setCustomBrand(item.brand ?? item.food.brand ?? "");
+    setCustomCalories(toInputValue(item.food.calories));
+    setCustomProtein(toInputValue(item.food.protein));
+    setCustomCarbs(toInputValue(item.food.carbs));
+    setCustomFat(toInputValue(item.food.fat));
+    setCustomSugar(toInputValue(item.food.sugar));
+    setCustomFiber(toInputValue(item.food.fiber));
+    setCustomSodium(toInputValue(item.food.sodium));
+    setCustomSaturatedFat(toInputValue(item.food.saturatedFat));
+  }
+
   async function handleLog(mealType: (typeof MEAL_TYPES)[number]) {
     if (!selectedItem) return;
     const parsedGrams = parseFloat(logGrams);
@@ -171,13 +215,15 @@ export default function LogScreen() {
       return;
     }
 
-    const id = generateId();
+    const isEditingCurrentFood = !!editingItem && editingItem.kind !== "recipe";
+    const id = isEditingCurrentFood ? editingItem.id : generateId();
+    const createdAt = isEditingCurrentFood ? editingItem.createdAt : new Date().toISOString();
     const item: CustomItem = {
       id,
       kind: customKind,
       name: customName.trim(),
       brand: customBrand.trim() || undefined,
-      createdAt: new Date().toISOString(),
+      createdAt,
       food: {
         id,
         name: customName.trim(),
@@ -195,11 +241,18 @@ export default function LogScreen() {
       },
     };
 
-    await saveCustomItem(item);
+    if (editingItem && editingItem.kind !== "recipe") {
+      await updateCustomItem(item);
+      Alert.alert("Updated", `${item.name} was updated.`);
+    } else {
+      await saveCustomItem(item);
+      Alert.alert("Saved", `${item.name} is ready to log anytime.`);
+    }
+
     reload();
     resetFoodForm();
+    setEditingItem(null);
     setMode("saved");
-    Alert.alert("Saved", `${item.name} is ready to log anytime.`);
   }
 
   function addRecipeIngredientFromFood(food: Food, itemId?: string) {
@@ -272,12 +325,13 @@ export default function LogScreen() {
     }
 
     const per100Multiplier = 100 / recipeTotals.grams;
-    const id = generateId();
+    const id = editingItem?.kind === "recipe" ? editingItem.id : generateId();
+    const createdAt = editingItem?.kind === "recipe" ? editingItem.createdAt : new Date().toISOString();
     const item: CustomItem = {
       id,
       kind: "recipe",
       name: recipeName.trim(),
-      createdAt: new Date().toISOString(),
+      createdAt,
       ingredients: recipeIngredients,
       food: {
         id,
@@ -291,11 +345,18 @@ export default function LogScreen() {
       },
     };
 
-    await saveCustomItem(item);
+    if (editingItem?.kind === "recipe") {
+      await updateCustomItem(item);
+      Alert.alert("Updated", `${item.name} was updated.`);
+    } else {
+      await saveCustomItem(item);
+      Alert.alert("Saved", `${item.name} is ready to log anytime.`);
+    }
+
     reload();
     resetRecipeForm();
+    setEditingItem(null);
     setMode("saved");
-    Alert.alert("Saved", `${item.name} is ready to log anytime.`);
   }
 
   function handleDeleteCustomItem(item: CustomItem) {
@@ -310,11 +371,17 @@ export default function LogScreen() {
             setSelectedItem(null);
             setLogGrams("100");
           }
+          if (editingItem?.id === item.id) {
+            stopEditing();
+          }
           reload();
         },
       },
     ]);
   }
+
+  const isEditingFood = !!editingItem && editingItem.kind !== "recipe";
+  const isEditingRecipe = editingItem?.kind === "recipe";
 
   return (
     <View style={styles.container}>
@@ -327,7 +394,16 @@ export default function LogScreen() {
           <TouchableOpacity
             key={item.key}
             style={[styles.modeButton, mode === item.key && styles.modeButtonActive]}
-            onPress={() => setMode(item.key as LogMode)}
+            onPress={() => {
+              if (item.key === "saved") {
+                stopEditing();
+              } else {
+                setMode(item.key as LogMode);
+                if (item.key !== "food" && isEditingFood) resetFoodForm();
+                if (item.key !== "recipe" && isEditingRecipe) resetRecipeForm();
+                if (item.key !== mode) setEditingItem(null);
+              }
+            }}
           >
             <Text style={[styles.modeButtonText, mode === item.key && styles.modeButtonTextActive]}>
               {item.label}
@@ -357,9 +433,14 @@ export default function LogScreen() {
                       </Text>
                       <Text style={styles.savedMacros}>{formatMacros(item.food)}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteCustomItem(item)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={18} color={Colors.textDim} />
-                    </TouchableOpacity>
+                    <View style={styles.savedActions}>
+                      <TouchableOpacity onPress={() => startEditing(item)} hitSlop={8}>
+                        <Ionicons name="create-outline" size={18} color={Colors.textDim} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteCustomItem(item)} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={18} color={Colors.textDim} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <TouchableOpacity
@@ -379,8 +460,10 @@ export default function LogScreen() {
 
         {mode === "food" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Create Food or Product</Text>
-            <Text style={styles.sectionSub}>Enter values per 100g. Calories are required. Extra nutrition fields are optional.</Text>
+            <Text style={styles.sectionTitle}>{isEditingFood ? "Edit Food or Product" : "Create Food or Product"}</Text>
+            <Text style={styles.sectionSub}>
+              Enter values per 100g. Calories are required. Extra nutrition fields are optional.
+            </Text>
 
             <View style={styles.segmentedControl}>
               {(["food", "product"] as const).map((item) => (
@@ -485,15 +568,23 @@ export default function LogScreen() {
             </View>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleSaveFood}>
-              <Text style={styles.primaryButtonText}>Save Item</Text>
+              <Text style={styles.primaryButtonText}>{isEditingFood ? "Update Item" : "Save Item"}</Text>
             </TouchableOpacity>
+
+            {isEditingFood && (
+              <TouchableOpacity style={styles.secondaryButton} onPress={stopEditing}>
+                <Text style={styles.secondaryButtonText}>Cancel Editing</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
         {mode === "recipe" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Build Recipe</Text>
-            <Text style={styles.sectionSub}>Use both saved items and searched foods as ingredients. The recipe macros update automatically.</Text>
+            <Text style={styles.sectionTitle}>{isEditingRecipe ? "Edit Recipe" : "Build Recipe"}</Text>
+            <Text style={styles.sectionSub}>
+              Use both saved items and searched foods as ingredients. The recipe macros update automatically.
+            </Text>
 
             <TextInput
               style={styles.input}
@@ -509,7 +600,11 @@ export default function LogScreen() {
             ) : (
               <View style={styles.chipWrap}>
                 {recipeBaseItems.map((item) => (
-                  <TouchableOpacity key={item.id} style={styles.chip} onPress={() => addRecipeIngredientFromFood(item.food, item.id)}>
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.chip}
+                    onPress={() => addRecipeIngredientFromFood(item.food, item.id)}
+                  >
                     <Text style={styles.chipText}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
@@ -587,8 +682,14 @@ export default function LogScreen() {
             </View>
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleSaveRecipe}>
-              <Text style={styles.primaryButtonText}>Save Recipe</Text>
+              <Text style={styles.primaryButtonText}>{isEditingRecipe ? "Update Recipe" : "Save Recipe"}</Text>
             </TouchableOpacity>
+
+            {isEditingRecipe && (
+              <TouchableOpacity style={styles.secondaryButton} onPress={stopEditing}>
+                <Text style={styles.secondaryButtonText}>Cancel Editing</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
@@ -620,7 +721,7 @@ export default function LogScreen() {
                 style={styles.gramsBtn}
                 onPress={() => setLogGrams(String(Math.max(25, (parseFloat(logGrams) || 100) - 25)))}
               >
-                <Text style={styles.gramsBtnText}>−</Text>
+                <Text style={styles.gramsBtnText}>-</Text>
               </TouchableOpacity>
               <View style={styles.gramsInputWrap}>
                 <TextInput
@@ -704,6 +805,7 @@ const styles = StyleSheet.create({
   savedName: { color: Colors.white, fontSize: 16, fontWeight: "700" },
   savedMeta: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
   savedMacros: { color: Colors.text, fontSize: 12, marginTop: 6 },
+  savedActions: { flexDirection: "row", alignItems: "center", gap: 14 },
   logNowButton: {
     marginTop: 12,
     backgroundColor: Colors.rosyGranite,
@@ -746,6 +848,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   primaryButtonText: { color: Colors.black, fontSize: 15, fontWeight: "700" },
+  secondaryButton: {
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  secondaryButtonText: { color: Colors.white, fontSize: 14, fontWeight: "600" },
   label: { color: Colors.text, fontSize: 13, marginBottom: 8 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { backgroundColor: Colors.tabBackground, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
