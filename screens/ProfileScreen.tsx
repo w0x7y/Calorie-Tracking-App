@@ -15,11 +15,11 @@ import { UserProfile } from "../types";
 import { Colors } from "../style/theme";
 
 const ACTIVITY_OPTIONS = [
-  { key: "sedentary", label: "Sedentary", multiplier: 1.2 },
-  { key: "light", label: "Light", multiplier: 1.375 },
-  { key: "moderate", label: "Moderate", multiplier: 1.55 },
-  { key: "active", label: "Active", multiplier: 1.725 },
-  { key: "very_active", label: "Very Active", multiplier: 1.9 },
+  { key: "sedentary", label: "Sedentary", hint: "Mostly sitting", multiplier: 1.2 },
+  { key: "light", label: "Light", hint: "A few active days", multiplier: 1.375 },
+  { key: "moderate", label: "Moderate", hint: "Regular movement", multiplier: 1.55 },
+  { key: "active", label: "Active", hint: "Training often", multiplier: 1.725 },
+  { key: "very_active", label: "Very active", hint: "Hard training + active days", multiplier: 1.9 },
 ] as const;
 
 type ActivityLevel = (typeof ACTIVITY_OPTIONS)[number]["key"];
@@ -68,6 +68,7 @@ export default function ProfileScreen() {
   const [goalCarbs, setGoalCarbs] = useState(String(DEFAULT_PROFILE.goalCarbs));
   const [goalFat, setGoalFat] = useState(String(DEFAULT_PROFILE.goalFat));
   const [waterGoalMl, setWaterGoalMl] = useState(String(DEFAULT_PROFILE.waterGoalMl));
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -121,13 +122,6 @@ export default function ProfileScreen() {
     };
   }, [activityLevel, age, gender, heightCm, weightKg]);
 
-  function applyRecommendedCalories() {
-    setGoalCalories(String(stats.maintenanceCalories));
-    setGoalProtein(String(stats.recommendedMacros.goalProtein));
-    setGoalCarbs(String(stats.recommendedMacros.goalCarbs));
-    setGoalFat(String(stats.recommendedMacros.goalFat));
-  }
-
   async function handleSave() {
     const parsedAge = parseNumber(age, DEFAULT_PROFILE.age);
     const parsedWeight = parseNumber(weightKg, DEFAULT_PROFILE.weightKg);
@@ -153,34 +147,14 @@ export default function ProfileScreen() {
     };
 
     await saveProfile(profile);
-    Alert.alert("Saved", "Your profile and goals were updated.");
+    Alert.alert("Saved", "Your profile and daily goals were updated.");
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.calculatorCard}>
-        <Text style={styles.sectionEyebrow}>Calorie Calculator</Text>
-        <Text style={styles.calorieNumber}>{stats.maintenanceCalories}</Text>
-        <Text style={styles.calorieLabel}>daily maintenance calories</Text>
-
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryPill}>
-            <Text style={styles.summaryValue}>{stats.bmr}</Text>
-            <Text style={styles.summaryLabel}>BMR</Text>
-          </View>
-          <View style={styles.summaryPill}>
-            <Text style={styles.summaryValue}>{stats.bmi}</Text>
-            <Text style={styles.summaryLabel}>BMI</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.primaryButton} onPress={applyRecommendedCalories}>
-          <Text style={styles.primaryButtonText}>Use This As My Goal</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Info</Text>
+        <Text style={styles.sectionTitle}>Basics</Text>
+        <Text style={styles.sectionText}>Only the details needed to calculate a useful daily target.</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Name</Text>
@@ -206,6 +180,25 @@ export default function ProfileScreen() {
             />
           </View>
           <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.segmentedControl}>
+              {(["male", "female"] as const).map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.segment, gender === option && styles.segmentActive]}
+                  onPress={() => setGender(option)}
+                >
+                  <Text style={[styles.segmentText, gender === option && styles.segmentTextActive]}>
+                    {option === "male" ? "Male" : "Female"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.twoColRow}>
+          <View style={[styles.field, styles.halfField]}>
             <Text style={styles.label}>Weight (kg)</Text>
             <TextInput
               style={styles.input}
@@ -216,9 +209,6 @@ export default function ProfileScreen() {
               placeholderTextColor={Colors.textDim}
             />
           </View>
-        </View>
-
-        <View style={styles.twoColRow}>
           <View style={[styles.field, styles.halfField]}>
             <Text style={styles.label}>Height (cm)</Text>
             <TextInput
@@ -230,52 +220,24 @@ export default function ProfileScreen() {
               placeholderTextColor={Colors.textDim}
             />
           </View>
-          <View style={[styles.field, styles.halfField]}>
-            <Text style={styles.label}>Gender</Text>
-            <View style={styles.segmentedControl}>
-              {(["male", "female"] as const).map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.segment,
-                    gender === option && styles.segmentActive,
-                  ]}
-                  onPress={() => setGender(option)}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      gender === option && styles.segmentTextActive,
-                    ]}
-                  >
-                    {option === "male" ? "Male" : "Female"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Activity Level</Text>
-          <View style={styles.optionGrid}>
+          <Text style={styles.label}>Activity level</Text>
+          <View style={styles.activityList}>
             {ACTIVITY_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.key}
-                style={[
-                  styles.optionButton,
-                  activityLevel === option.key && styles.optionButtonActive,
-                ]}
+                style={[styles.activityCard, activityLevel === option.key && styles.activityCardActive]}
                 onPress={() => setActivityLevel(option.key)}
               >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    activityLevel === option.key && styles.optionButtonTextActive,
-                  ]}
-                >
-                  {option.label}
-                </Text>
+                <View style={styles.activityCopy}>
+                  <Text style={[styles.activityTitle, activityLevel === option.key && styles.activityTitleActive]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.activityHint}>{option.hint}</Text>
+                </View>
+                <View style={[styles.radio, activityLevel === option.key && styles.radioActive]} />
               </TouchableOpacity>
             ))}
           </View>
@@ -284,69 +246,105 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Goals</Text>
+        <Text style={styles.sectionText}>Set your daily targets. The recommended values are calculated from your profile above.</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Daily Calories</Text>
-          <TextInput
-            style={styles.input}
-            value={goalCalories}
-            onChangeText={setGoalCalories}
-            keyboardType="numbers-and-punctuation"
-            placeholder={String(stats.maintenanceCalories)}
-            placeholderTextColor={Colors.textDim}
-          />
+        {/* Recommended banner */}
+        <View style={styles.recommendedCard}>
+          <Text style={styles.recommendedEyebrow}>Calculated for you</Text>
+          <View style={styles.recommendedCalRow}>
+            <Text style={styles.recommendedCalValue}>{stats.maintenanceCalories}</Text>
+            <Text style={styles.recommendedCalUnit}>kcal / day</Text>
+          </View>
+          <View style={styles.recommendedMacroRow}>
+            <View style={styles.recommendedMacroItem}>
+              <Text style={[styles.recommendedMacroValue, { color: Colors.proteine }]}>{stats.recommendedMacros.goalProtein}g</Text>
+              <Text style={styles.recommendedMacroLabel}>Protein</Text>
+            </View>
+            <View style={styles.recommendedMacroDivider} />
+            <View style={styles.recommendedMacroItem}>
+              <Text style={[styles.recommendedMacroValue, { color: Colors.carbohydrates }]}>{stats.recommendedMacros.goalCarbs}g</Text>
+              <Text style={styles.recommendedMacroLabel}>Carbs</Text>
+            </View>
+            <View style={styles.recommendedMacroDivider} />
+            <View style={styles.recommendedMacroItem}>
+              <Text style={[styles.recommendedMacroValue, { color: Colors.fats }]}>{stats.recommendedMacros.goalFat}g</Text>
+              <Text style={styles.recommendedMacroLabel}>Fat</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Water Goal (ml)</Text>
-          <TextInput
-            style={styles.input}
-            value={waterGoalMl}
-            onChangeText={setWaterGoalMl}
-            keyboardType="numbers-and-punctuation"
-            placeholder={String(DEFAULT_PROFILE.waterGoalMl)}
-            placeholderTextColor={Colors.textDim}
-          />
-        </View>
-
-        <View style={styles.threeColRow}>
-          <View style={[styles.field, styles.thirdField]}>
-            <Text style={styles.label}>Protein</Text>
+        {/* Calories + Water row */}
+        <View style={styles.twoColRow}>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Daily calories</Text>
             <TextInput
               style={styles.input}
+              value={goalCalories}
+              onChangeText={setGoalCalories}
+              keyboardType="numbers-and-punctuation"
+              placeholder={String(stats.maintenanceCalories)}
+              placeholderTextColor={Colors.textDim}
+            />
+          </View>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Water (ml)</Text>
+            <TextInput
+              style={styles.input}
+              value={waterGoalMl}
+              onChangeText={setWaterGoalMl}
+              keyboardType="numbers-and-punctuation"
+              placeholder={String(DEFAULT_PROFILE.waterGoalMl)}
+              placeholderTextColor={Colors.textDim}
+            />
+          </View>
+        </View>
+
+        {/* Macros */}
+        <Text style={styles.macrosSectionLabel}>Macros</Text>
+        <View style={styles.macrosRow}>
+          <View style={styles.macroInputCard}>
+            <View style={[styles.macroColorBar, { backgroundColor: Colors.proteine }]} />
+            <Text style={styles.macroInputLabel}>Protein</Text>
+            <TextInput
+              style={styles.macroInput}
               value={goalProtein}
               onChangeText={setGoalProtein}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalProtein)}
               placeholderTextColor={Colors.textDim}
             />
+            <Text style={styles.macroInputUnit}>g</Text>
           </View>
-          <View style={[styles.field, styles.thirdField]}>
-            <Text style={styles.label}>Carbs</Text>
+          <View style={styles.macroInputCard}>
+            <View style={[styles.macroColorBar, { backgroundColor: Colors.carbohydrates }]} />
+            <Text style={styles.macroInputLabel}>Carbs</Text>
             <TextInput
-              style={styles.input}
+              style={styles.macroInput}
               value={goalCarbs}
               onChangeText={setGoalCarbs}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalCarbs)}
               placeholderTextColor={Colors.textDim}
             />
+            <Text style={styles.macroInputUnit}>g</Text>
           </View>
-          <View style={[styles.field, styles.thirdField]}>
-            <Text style={styles.label}>Fat</Text>
+          <View style={styles.macroInputCard}>
+            <View style={[styles.macroColorBar, { backgroundColor: Colors.fats }]} />
+            <Text style={styles.macroInputLabel}>Fat</Text>
             <TextInput
-              style={styles.input}
+              style={styles.macroInput}
               value={goalFat}
               onChangeText={setGoalFat}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalFat)}
               placeholderTextColor={Colors.textDim}
             />
+            <Text style={styles.macroInputUnit}>g</Text>
           </View>
         </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Profile</Text>
+          <Text style={styles.saveButtonText}>Save profile</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -363,51 +361,52 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 14,
   },
-  calculatorCard: {
+  heroCard: {
     backgroundColor: Colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 18,
   },
-  sectionEyebrow: {
+  eyebrow: {
     color: Colors.textDim,
     fontSize: 13,
     marginBottom: 8,
   },
-  calorieNumber: {
+  heroTitle: {
     color: Colors.white,
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: "700",
   },
-  calorieLabel: {
+  heroText: {
     color: Colors.text,
-    fontSize: 15,
-    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
   },
-  summaryRow: {
+  heroStats: {
     flexDirection: "row",
     gap: 10,
     marginTop: 18,
     marginBottom: 16,
   },
-  summaryPill: {
+  statPill: {
     flex: 1,
     backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
   },
-  summaryValue: {
+  statValue: {
     color: Colors.white,
     fontSize: 20,
     fontWeight: "700",
   },
-  summaryLabel: {
+  statLabel: {
     color: Colors.textDim,
     fontSize: 12,
     marginTop: 3,
   },
   primaryButton: {
     backgroundColor: Colors.bar,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
   },
@@ -418,13 +417,19 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: Colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
   },
   sectionTitle: {
     color: Colors.white,
     fontSize: 18,
     fontWeight: "700",
+  },
+  sectionText: {
+    color: Colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
     marginBottom: 14,
   },
   field: {
@@ -481,36 +486,166 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: Colors.white,
   },
-  optionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  activityList: {
     gap: 8,
   },
-  optionButton: {
+  activityCard: {
     backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "transparent",
   },
-  optionButtonActive: {
+  activityCardActive: {
     borderColor: Colors.bar,
   },
-  optionButtonText: {
-    color: Colors.textDim,
-    fontSize: 13,
+  activityCopy: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  activityTitle: {
+    color: Colors.white,
+    fontSize: 14,
     fontWeight: "600",
   },
-  optionButtonTextActive: {
+  activityTitleActive: {
     color: Colors.white,
+  },
+  activityHint: {
+    color: Colors.textDim,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  radio: {
+    width: 16,
+    height: 16,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: Colors.rosyGranite,
+  },
+  radioActive: {
+    borderColor: Colors.bar,
+    backgroundColor: Colors.bar,
+  },
+  recommendedCard: {
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: Colors.bar + "55",
+  },
+  recommendedEyebrow: {
+    color: Colors.bar,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  recommendedCalRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
+    marginBottom: 16,
+  },
+  recommendedCalValue: {
+    color: Colors.white,
+    fontSize: 40,
+    fontWeight: "800",
+    lineHeight: 42,
+  },
+  recommendedCalUnit: {
+    color: Colors.textDim,
+    fontSize: 15,
+    fontWeight: "500",
+    paddingBottom: 5,
+  },
+  recommendedMacroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 12,
+  },
+  recommendedMacroItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  recommendedMacroDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: Colors.rosyGranite + "44",
+  },
+  recommendedMacroValue: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  recommendedMacroLabel: {
+    color: Colors.textDim,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  macrosSectionLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  macrosRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 18,
+  },
+  macroInputCard: {
+    flex: 1,
+    backgroundColor: Colors.tabBackground,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  macroColorBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  macroInputLabel: {
+    color: Colors.textDim,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  macroInput: {
+    backgroundColor: Colors.background,
+    color: Colors.white,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 15,
+    fontWeight: "700",
+    width: "100%",
+    textAlign: "center",
+  },
+  macroInputUnit: {
+    color: Colors.textDim,
+    fontSize: 11,
+    marginTop: 4,
   },
   saveButton: {
     backgroundColor: Colors.rosyGranite,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 13,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 14,
   },
   saveButtonText: {
     color: Colors.white,
