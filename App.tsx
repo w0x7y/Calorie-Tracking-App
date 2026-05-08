@@ -9,14 +9,16 @@ import SearchScreen from "./screens/SearchScreen";
 import HistoryScreen from "./screens/HistoryScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 
-import { Colors } from "./style/theme";
+import { ThemeProvider, useTheme } from "./style/ThemeContext";
 
 const Tab = createBottomTabNavigator();
 
-export default function App() {
+function Navigation() {
+  const { colors, theme } = useTheme();
+
   return (
     <NavigationContainer>
-      <StatusBar style="light"/>
+      <StatusBar style={theme === "Light" ? "dark" : "light"} />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
@@ -35,11 +37,15 @@ export default function App() {
               />
             );
           },
-          tabBarStyle: { backgroundColor: Colors.tabBackground, borderTopWidth: 0.5, borderTopColor: Colors.rosyGranite },
-          headerStyle: { backgroundColor: Colors.tabBackground },
-          headerTintColor: Colors.white,
-          tabBarActiveTintColor: Colors.primary,
-          tabBarInactiveTintColor: Colors.dimGrey,
+          tabBarStyle: {
+            backgroundColor: colors.tabBackground,
+            borderTopWidth: 0.5,
+            borderTopColor: colors.outlineVariant,
+          },
+          headerStyle: { backgroundColor: colors.tabBackground },
+          headerTintColor: colors.white,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textDim,
         })}
       >
         <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -49,5 +55,13 @@ export default function App() {
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Navigation />
+    </ThemeProvider>
   );
 }

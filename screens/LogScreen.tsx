@@ -14,7 +14,6 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../style/theme";
 import {
   addMeal,
   deleteCustomItem,
@@ -25,15 +24,9 @@ import {
 import { generateId, todayISO } from "../utils/nutrition";
 import { CustomItem, CustomRecipeIngredient, Food, MealEntry } from "../types";
 import { BarcodeLookupResult, lookupProductByBarcode, searchFoods } from "../utils/api";
+import { useTheme } from "../style/ThemeContext";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-
-const MEAL_COLORS: Record<string, string> = {
-  Breakfast: "#FF9F43",
-  Lunch: "#00D2D3",
-  Dinner: "#A29BFE",
-  Snacks: "#FD79A8",
-};
 
 type LogMode = "saved" | "food" | "recipe";
 type CustomKind = "food" | "product";
@@ -91,6 +84,16 @@ function buildScannedDraft(result: BarcodeLookupResult): ScannedProductDraft {
 }
 
 export default function LogScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const MEAL_COLORS: Record<string, string> = useMemo(() => ({
+    Breakfast: colors.mealBreakfast,
+    Lunch: colors.mealLunch,
+    Dinner: colors.mealDinner,
+    Snacks: colors.mealSnacks,
+  }), [colors]);
+
   const [mode, setMode] = useState<LogMode>("saved");
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
   const [savedSearch, setSavedSearch] = useState("");
@@ -604,20 +607,20 @@ export default function LogScreen() {
             <Text style={styles.sectionSub}>Log your custom foods, products, and recipes anytime.</Text>
 
             <View style={styles.savedSearchRow}>
-              <Ionicons name="search-outline" size={16} color={Colors.textDim} style={styles.savedSearchIcon} />
+              <Ionicons name="search-outline" size={16} color={colors.textDim} style={styles.savedSearchIcon} />
               <TextInput
                 style={styles.savedSearchInput}
                 value={savedSearch}
                 onChangeText={setSavedSearch}
                 placeholder="Search saved items..."
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 returnKeyType="search"
                 clearButtonMode="while-editing"
               />
             </View>
 
             <TouchableOpacity style={styles.scanButton} onPress={openScanner}>
-              <Ionicons name="scan-outline" size={18} color={Colors.white} />
+              <Ionicons name="scan-outline" size={18} color={colors.white} />
               <Text style={styles.scanButtonText}>Scan Barcode</Text>
             </TouchableOpacity>
 
@@ -634,7 +637,7 @@ export default function LogScreen() {
                         <Text style={styles.savedName}>{item.name}</Text>
                         {item.barcode && (
                           <View style={styles.barcodeBadge}>
-                            <Ionicons name="barcode-outline" size={12} color={Colors.black} />
+                            <Ionicons name="barcode-outline" size={12} color={colors.black} />
                             <Text style={styles.barcodeBadgeText}>Scanned</Text>
                           </View>
                         )}
@@ -655,10 +658,10 @@ export default function LogScreen() {
                     </View>
                     <View style={styles.savedActions}>
                       <TouchableOpacity onPress={() => startEditing(item)} hitSlop={8}>
-                        <Ionicons name="create-outline" size={18} color={Colors.textDim} />
+                        <Ionicons name="create-outline" size={18} color={colors.textDim} />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleDeleteCustomItem(item)} hitSlop={8}>
-                        <Ionicons name="trash-outline" size={18} color={Colors.textDim} />
+                        <Ionicons name="trash-outline" size={18} color={colors.textDim} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -687,7 +690,7 @@ export default function LogScreen() {
 
             {!isEditingFood && (
               <TouchableOpacity style={styles.scanButton} onPress={openScanner}>
-                <Ionicons name="scan-outline" size={18} color={Colors.white} />
+                <Ionicons name="scan-outline" size={18} color={colors.white} />
                 <Text style={styles.scanButtonText}>Scan Product Barcode</Text>
               </TouchableOpacity>
             )}
@@ -711,14 +714,14 @@ export default function LogScreen() {
               value={customName}
               onChangeText={setCustomName}
               placeholder="Name"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
             <TextInput
               style={styles.input}
               value={customBrand}
               onChangeText={setCustomBrand}
               placeholder="Brand (optional)"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
             <TextInput
               style={styles.input}
@@ -726,7 +729,7 @@ export default function LogScreen() {
               onChangeText={setCustomCalories}
               keyboardType="numbers-and-punctuation"
               placeholder="Calories"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
 
             <View style={styles.threeColRow}>
@@ -736,7 +739,7 @@ export default function LogScreen() {
                 onChangeText={setCustomProtein}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Protein"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <TextInput
                 style={[styles.input, styles.thirdField]}
@@ -744,7 +747,7 @@ export default function LogScreen() {
                 onChangeText={setCustomCarbs}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Carbs"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <TextInput
                 style={[styles.input, styles.thirdField]}
@@ -752,7 +755,7 @@ export default function LogScreen() {
                 onChangeText={setCustomFat}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Fat"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
             </View>
 
@@ -763,7 +766,7 @@ export default function LogScreen() {
                 onChangeText={setCustomSugar}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Sugar (optional)"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <TextInput
                 style={[styles.input, styles.halfField]}
@@ -771,7 +774,7 @@ export default function LogScreen() {
                 onChangeText={setCustomFiber}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Fiber (optional)"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
             </View>
 
@@ -782,7 +785,7 @@ export default function LogScreen() {
                 onChangeText={setCustomSodium}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Salt/Sodium mg (optional)"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <TextInput
                 style={[styles.input, styles.halfField]}
@@ -790,7 +793,7 @@ export default function LogScreen() {
                 onChangeText={setCustomSaturatedFat}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Sat. fat (optional)"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
             </View>
 
@@ -818,7 +821,7 @@ export default function LogScreen() {
               value={recipeName}
               onChangeText={setRecipeName}
               placeholder="Recipe name"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
 
             <Text style={styles.label}>Saved Ingredients</Text>
@@ -845,7 +848,7 @@ export default function LogScreen() {
                 value={recipeQuery}
                 onChangeText={setRecipeQuery}
                 placeholder="Search foods like tomato, rice, chicken..."
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 onSubmitEditing={handleRecipeSearch}
                 returnKeyType="search"
               />
@@ -854,7 +857,7 @@ export default function LogScreen() {
               </TouchableOpacity>
             </View>
 
-            {recipeSearchLoading && <ActivityIndicator style={styles.searchLoading} color={Colors.platinum} />}
+            {recipeSearchLoading && <ActivityIndicator style={styles.searchLoading} color={colors.platinum} />}
 
             {!recipeSearchLoading && recipeSearchResults.length > 0 && (
               <View style={styles.searchResultsWrap}>
@@ -864,7 +867,7 @@ export default function LogScreen() {
                       <Text style={styles.searchResultName}>{food.name}</Text>
                       <Text style={styles.searchResultMeta}>{Math.round(food.calories)} kcal / 100g</Text>
                     </View>
-                    <Ionicons name="add-circle-outline" size={20} color={Colors.text} />
+                    <Ionicons name="add-circle-outline" size={20} color={colors.text} />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -885,7 +888,7 @@ export default function LogScreen() {
                       onChangeText={(text) => updateRecipeIngredient(ingredient.id, text)}
                       keyboardType="numbers-and-punctuation"
                       placeholder="grams"
-                      placeholderTextColor={Colors.textDim}
+                      placeholderTextColor={colors.textDim}
                     />
                   </View>
                   <View style={styles.ingredientActions}>
@@ -895,7 +898,7 @@ export default function LogScreen() {
                       hitSlop={8}
                       style={index === 0 ? styles.iconDisabled : undefined}
                     >
-                      <Ionicons name="chevron-up" size={18} color={Colors.textDim} />
+                      <Ionicons name="chevron-up" size={18} color={colors.textDim} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => moveRecipeIngredient(ingredient.id, "down")}
@@ -903,10 +906,10 @@ export default function LogScreen() {
                       hitSlop={8}
                       style={index === recipeIngredients.length - 1 ? styles.iconDisabled : undefined}
                     >
-                      <Ionicons name="chevron-down" size={18} color={Colors.textDim} />
+                      <Ionicons name="chevron-down" size={18} color={colors.textDim} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => removeRecipeIngredient(ingredient.id)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={18} color={Colors.textDim} />
+                      <Ionicons name="trash-outline" size={18} color={colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -957,7 +960,7 @@ export default function LogScreen() {
         <View style={styles.scannerScreen}>
           <View style={styles.scannerTopBar}>
             <TouchableOpacity style={styles.scannerCloseBtn} onPress={closeScanner}>
-              <Ionicons name="close" size={24} color={Colors.white} />
+              <Ionicons name="close" size={24} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.scannerTitle}>Scan a Product</Text>
             <View style={styles.scannerSpacer} />
@@ -965,7 +968,7 @@ export default function LogScreen() {
 
           {!cameraPermission ? (
             <View style={styles.permissionWrap}>
-              <ActivityIndicator color={Colors.platinum} />
+              <ActivityIndicator color={colors.platinum} />
             </View>
           ) : !cameraPermission.granted ? (
             <View style={styles.permissionWrap}>
@@ -990,7 +993,7 @@ export default function LogScreen() {
               </View>
               {scanLookupLoading && (
                 <View style={styles.lookupOverlay}>
-                  <ActivityIndicator color={Colors.white} />
+                  <ActivityIndicator color={colors.white} />
                   <Text style={styles.lookupOverlayText}>Looking up product...</Text>
                 </View>
               )}
@@ -1017,14 +1020,14 @@ export default function LogScreen() {
                 value={scannedDraft?.name ?? ""}
                 onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, name: text } : current))}
                 placeholder="Product name"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <TextInput
                 style={styles.input}
                 value={scannedDraft?.brand ?? ""}
                 onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, brand: text } : current))}
                 placeholder="Brand"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
               <View style={styles.twoColRow}>
                 <TextInput
@@ -1033,14 +1036,14 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, servingSize: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Serving size"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
                 <TextInput
                   style={[styles.input, styles.halfField]}
                   value={scannedDraft?.servingUnit ?? ""}
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, servingUnit: text } : current))}
                   placeholder="Serving unit"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
               </View>
               <TextInput
@@ -1049,7 +1052,7 @@ export default function LogScreen() {
                 onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, calories: text } : current))}
                 keyboardType="numbers-and-punctuation"
                 placeholder="Calories per 100g"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
               />
 
               <View style={styles.threeColRow}>
@@ -1059,7 +1062,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, protein: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Protein"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
                 <TextInput
                   style={[styles.input, styles.thirdField]}
@@ -1067,7 +1070,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, carbs: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Carbs"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
                 <TextInput
                   style={[styles.input, styles.thirdField]}
@@ -1075,7 +1078,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, fat: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Fat"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
               </View>
 
@@ -1086,7 +1089,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, sugar: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Sugar"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
                 <TextInput
                   style={[styles.input, styles.halfField]}
@@ -1094,7 +1097,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, fiber: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Fiber"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
               </View>
 
@@ -1105,7 +1108,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, sodium: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Sodium mg"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
                 <TextInput
                   style={[styles.input, styles.halfField]}
@@ -1113,7 +1116,7 @@ export default function LogScreen() {
                   onChangeText={(text) => setScannedDraft((current) => (current ? { ...current, saturatedFat: text } : current))}
                   keyboardType="numbers-and-punctuation"
                   placeholder="Sat. fat"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                 />
               </View>
             </ScrollView>
@@ -1191,10 +1194,10 @@ export default function LogScreen() {
                 const grams = Math.max(0, parseFloat(logGrams) || 0);
                 const s = grams / (selectedItem?.food.servingSize ?? 100);
                 return [
-                  { label: "Cal", value: Math.round((selectedItem?.food.calories ?? 0) * s), color: Colors.bar },
-                  { label: "Protein", value: `${Math.round((selectedItem?.food.protein ?? 0) * s)}g`, color: Colors.proteine },
-                  { label: "Carbs", value: `${Math.round((selectedItem?.food.carbs ?? 0) * s)}g`, color: Colors.carbohydrates },
-                  { label: "Fat", value: `${Math.round((selectedItem?.food.fat ?? 0) * s)}g`, color: Colors.fats },
+                  { label: "Cal", value: Math.round((selectedItem?.food.calories ?? 0) * s), color: colors.bar },
+                  { label: "Protein", value: `${Math.round((selectedItem?.food.protein ?? 0) * s)}g`, color: colors.proteine },
+                  { label: "Carbs", value: `${Math.round((selectedItem?.food.carbs ?? 0) * s)}g`, color: colors.carbohydrates },
+                  { label: "Fat", value: `${Math.round((selectedItem?.food.fat ?? 0) * s)}g`, color: colors.fats },
                 ].map((macro) => (
                   <View key={macro.label} style={[styles.macroPill, { borderColor: macro.color }]}>
                     <Text style={[styles.macroValue, { color: macro.color }]}>{macro.value}</Text>
@@ -1224,35 +1227,35 @@ export default function LogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   modeRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 16 },
   modeButton: {
     flex: 1,
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "transparent",
   },
-  modeButtonActive: { borderColor: Colors.bar },
-  modeButtonText: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
-  modeButtonTextActive: { color: Colors.white },
+  modeButtonActive: { borderColor: colors.bar },
+  modeButtonText: { color: colors.textDim, fontSize: 13, fontWeight: "600" },
+  modeButtonTextActive: { color: colors.white },
   content: { padding: 16, paddingBottom: 28 },
-  section: { backgroundColor: Colors.secondaryBackground, borderRadius: 12, padding: 16 },
-  sectionTitle: { color: Colors.white, fontSize: 18, fontWeight: "700" },
-  sectionSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 14 },
-  emptyText: { color: Colors.textDim, fontSize: 14 },
-  savedCard: { backgroundColor: Colors.tabBackground, borderRadius: 10, padding: 14, marginBottom: 10 },
+  section: { backgroundColor: colors.secondaryBackground, borderRadius: 12, padding: 16 },
+  sectionTitle: { color: colors.white, fontSize: 18, fontWeight: "700" },
+  sectionSub: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 14 },
+  emptyText: { color: colors.textDim, fontSize: 14 },
+  savedCard: { backgroundColor: colors.tabBackground, borderRadius: 10, padding: 14, marginBottom: 10 },
   savedHeader: { flexDirection: "row", gap: 10 },
   savedTitleWrap: { flex: 1 },
   savedTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  savedName: { color: Colors.white, fontSize: 16, fontWeight: "700" },
-  savedMeta: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
+  savedName: { color: colors.white, fontSize: 16, fontWeight: "700" },
+  savedMeta: { color: colors.textDim, fontSize: 12, marginTop: 3 },
   savedServing: { color: "#BEEFFF", fontSize: 11, marginTop: 4 },
-  savedBarcode: { color: Colors.textDim, fontSize: 11, marginTop: 4 },
-  savedMacros: { color: Colors.text, fontSize: 12, marginTop: 6 },
+  savedBarcode: { color: colors.textDim, fontSize: 11, marginTop: 4 },
+  savedMacros: { color: colors.text, fontSize: 12, marginTop: 6 },
   savedActions: { flexDirection: "row", alignItems: "center", gap: 14 },
   barcodeBadge: {
     flexDirection: "row",
@@ -1263,19 +1266,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  barcodeBadgeText: { color: Colors.black, fontSize: 11, fontWeight: "700" },
+  barcodeBadgeText: { color: colors.black, fontSize: 11, fontWeight: "700" },
   logNowButton: {
     marginTop: 12,
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: "center",
   },
-  logNowText: { color: Colors.white, fontSize: 14, fontWeight: "700" },
+  logNowText: { color: colors.white, fontSize: 14, fontWeight: "700" },
   savedSearchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 12,
@@ -1285,12 +1288,12 @@ const styles = StyleSheet.create({
   },
   savedSearchInput: {
     flex: 1,
-    color: Colors.white,
+    color: colors.white,
     fontSize: 15,
     paddingVertical: 11,
   },
   scanButton: {
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -1300,25 +1303,25 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.rosyGranite,
+    borderColor: colors.rosyGranite,
   },
-  scanButtonText: { color: Colors.white, fontSize: 14, fontWeight: "700" },
+  scanButtonText: { color: colors.white, fontSize: 14, fontWeight: "700" },
   segmentedControl: { flexDirection: "row", gap: 8, marginBottom: 12 },
   segment: {
     flex: 1,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "transparent",
   },
-  segmentActive: { borderColor: Colors.bar },
-  segmentText: { color: Colors.textDim, fontSize: 14, fontWeight: "600" },
-  segmentTextActive: { color: Colors.white },
+  segmentActive: { borderColor: colors.bar },
+  segmentText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  segmentTextActive: { color: colors.white },
   input: {
-    backgroundColor: Colors.tabBackground,
-    color: Colors.white,
+    backgroundColor: colors.tabBackground,
+    color: colors.white,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -1330,39 +1333,39 @@ const styles = StyleSheet.create({
   thirdField: { flex: 1 },
   halfField: { flex: 1 },
   primaryButton: {
-    backgroundColor: Colors.bar,
+    backgroundColor: colors.bar,
     borderRadius: 10,
     paddingVertical: 13,
     alignItems: "center",
     marginTop: 6,
   },
-  primaryButtonText: { color: Colors.black, fontSize: 15, fontWeight: "700" },
+  primaryButtonText: { color: colors.black, fontSize: 15, fontWeight: "700" },
   secondaryButton: {
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     paddingVertical: 13,
     alignItems: "center",
     marginTop: 10,
   },
-  secondaryButtonText: { color: Colors.white, fontSize: 14, fontWeight: "600" },
-  label: { color: Colors.text, fontSize: 13, marginBottom: 8 },
+  secondaryButtonText: { color: colors.white, fontSize: 14, fontWeight: "600" },
+  label: { color: colors.text, fontSize: 13, marginBottom: 8 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { backgroundColor: Colors.tabBackground, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  chipText: { color: Colors.white, fontSize: 13, fontWeight: "600" },
+  chip: { backgroundColor: colors.tabBackground, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  chipText: { color: colors.white, fontSize: 13, fontWeight: "600" },
   ingredientsLabel: { marginTop: 16 },
   searchRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
   searchInput: { flex: 1, marginBottom: 0 },
   searchBtn: {
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     borderRadius: 10,
     paddingHorizontal: 18,
     justifyContent: "center",
   },
-  searchBtnText: { color: Colors.white, fontWeight: "700", fontSize: 15 },
+  searchBtnText: { color: colors.white, fontWeight: "700", fontSize: 15 },
   searchLoading: { marginVertical: 8 },
   searchResultsWrap: { marginBottom: 8 },
   searchResult: {
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
@@ -1371,35 +1374,35 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   searchResultMain: { flex: 1 },
-  searchResultName: { color: Colors.white, fontSize: 14, fontWeight: "600" },
-  searchResultMeta: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
+  searchResultName: { color: colors.white, fontSize: 14, fontWeight: "600" },
+  searchResultMeta: { color: colors.textDim, fontSize: 12, marginTop: 3 },
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
   },
   ingredientMain: { flex: 1 },
-  ingredientName: { color: Colors.white, fontSize: 14, fontWeight: "600", marginBottom: 4 },
-  ingredientMeta: { color: Colors.textDim, fontSize: 12, marginBottom: 8 },
+  ingredientName: { color: colors.white, fontSize: 14, fontWeight: "600", marginBottom: 4 },
+  ingredientMeta: { color: colors.textDim, fontSize: 12, marginBottom: 8 },
   ingredientActions: { alignItems: "center", gap: 10 },
   ingredientInput: {
-    backgroundColor: Colors.secondaryBackground,
-    color: Colors.white,
+    backgroundColor: colors.secondaryBackground,
+    color: colors.white,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
   },
-  recipeSummary: { backgroundColor: Colors.tabBackground, borderRadius: 10, padding: 14, marginTop: 12 },
-  recipeSummaryTitle: { color: Colors.white, fontSize: 15, fontWeight: "700", marginBottom: 6 },
-  recipeSummaryLine: { color: Colors.text, fontSize: 13, marginBottom: 4 },
-  recipeSummarySub: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
+  recipeSummary: { backgroundColor: colors.tabBackground, borderRadius: 10, padding: 14, marginTop: 12 },
+  recipeSummaryTitle: { color: colors.white, fontSize: 15, fontWeight: "700", marginBottom: 6 },
+  recipeSummaryLine: { color: colors.text, fontSize: 13, marginBottom: 4 },
+  recipeSummarySub: { color: colors.textDim, fontSize: 12, marginTop: 2 },
   iconDisabled: { opacity: 0.35 },
-  scannerScreen: { flex: 1, backgroundColor: Colors.background },
+  scannerScreen: { flex: 1, backgroundColor: colors.background },
   scannerTopBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1407,7 +1410,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scannerCloseBtn: {
     width: 36,
@@ -1415,7 +1418,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  scannerTitle: { color: Colors.white, fontSize: 18, fontWeight: "700" },
+  scannerTitle: { color: colors.white, fontSize: 18, fontWeight: "700" },
   scannerSpacer: { width: 36, height: 36 },
   scannerBody: { flex: 1 },
   camera: { flex: 1 },
@@ -1434,7 +1437,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   scannerHint: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 14,
     marginTop: 20,
     fontWeight: "600",
@@ -1446,7 +1449,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
   },
-  lookupOverlayText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  lookupOverlayText: { color: colors.white, fontSize: 15, fontWeight: "600" },
   permissionWrap: {
     flex: 1,
     alignItems: "center",
@@ -1454,14 +1457,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   permissionTitle: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 16,
     textAlign: "center",
     marginBottom: 16,
   },
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
   modalSheet: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -1471,26 +1474,26 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     alignSelf: "center",
     marginBottom: 20,
   },
-  modalTitle: { color: Colors.white, fontSize: 20, fontWeight: "700" },
-  modalSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  modalTitle: { color: colors.white, fontSize: 20, fontWeight: "700" },
+  modalSub: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 16 },
   modalServingSub: { color: "#BEEFFF", fontSize: 12, marginTop: -10, marginBottom: 14 },
   gramsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 20 },
   gramsBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     alignItems: "center",
     justifyContent: "center",
   },
-  gramsBtnText: { color: Colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
+  gramsBtnText: { color: colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
   gramsInputWrap: { alignItems: "center" },
-  gramsInput: { color: Colors.white, fontSize: 28, fontWeight: "700", textAlign: "center", minWidth: 60 },
-  gramsLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
+  gramsInput: { color: colors.white, fontSize: 28, fontWeight: "700", textAlign: "center", minWidth: 60 },
+  gramsLabel: { color: colors.textDim, fontSize: 12, marginTop: 2 },
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroPill: {
     flex: 1,
@@ -1500,8 +1503,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   macroValue: { fontSize: 15, fontWeight: "700" },
-  macroLabel: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  modalMealText: { color: Colors.textDim, fontSize: 13, marginBottom: 12 },
+  macroLabel: { color: colors.textDim, fontSize: 11, marginTop: 2 },
+  modalMealText: { color: colors.textDim, fontSize: 13, marginBottom: 12 },
   mealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   mealBtn: {
     flexDirection: "row",
@@ -1513,5 +1516,5 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
-  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  mealBtnText: { color: colors.white, fontSize: 15, fontWeight: "600" },
 });

@@ -76,3 +76,15 @@ export interface CustomItem {
   food: Food;
   ingredients?: CustomRecipeIngredient[];
 }
+
+export type ThemeType =
+  | "Light"
+  | "Dark"
+  | "Nord"
+  | "Rose Pine"
+  | "Tokyo Night"
+  | "Catppuccin"
+  | "One Dark Pro"
+  | "Poimandres"
+  | "Synthwave '84"
+  | "Everforest";

@@ -11,8 +11,9 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { calculateBMR } from "../utils/nutrition";
 import { getProfile, saveProfile } from "../utils/storage";
-import { UserProfile } from "../types";
-import { Colors } from "../style/theme";
+import { UserProfile, ThemeType } from "../types";
+import { useTheme } from "../style/ThemeContext";
+import { Themes } from "../style/themes";
 
 const ACTIVITY_OPTIONS = [
   { key: "sedentary", label: "Sedentary", hint: "Mostly sitting", multiplier: 1.2 },
@@ -57,6 +58,9 @@ function macroTargetsFromCalories(calories: number, weightKg: number) {
 }
 
 export default function ProfileScreen() {
+  const { colors, theme, setTheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [name, setName] = useState(DEFAULT_PROFILE.name);
   const [age, setAge] = useState(String(DEFAULT_PROFILE.age));
   const [weightKg, setWeightKg] = useState(String(DEFAULT_PROFILE.weightKg));
@@ -68,7 +72,6 @@ export default function ProfileScreen() {
   const [goalCarbs, setGoalCarbs] = useState(String(DEFAULT_PROFILE.goalCarbs));
   const [goalFat, setGoalFat] = useState(String(DEFAULT_PROFILE.goalFat));
   const [waterGoalMl, setWaterGoalMl] = useState(String(DEFAULT_PROFILE.waterGoalMl));
-
 
   useFocusEffect(
     React.useCallback(() => {
@@ -163,7 +166,7 @@ export default function ProfileScreen() {
             value={name}
             onChangeText={setName}
             placeholder="Your name"
-            placeholderTextColor={Colors.textDim}
+            placeholderTextColor={colors.textDim}
           />
         </View>
 
@@ -176,7 +179,7 @@ export default function ProfileScreen() {
               onChangeText={setAge}
               keyboardType="numbers-and-punctuation"
               placeholder="25"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
           </View>
           <View style={[styles.field, styles.halfField]}>
@@ -206,7 +209,7 @@ export default function ProfileScreen() {
               onChangeText={setWeightKg}
               keyboardType="numbers-and-punctuation"
               placeholder="70"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
           </View>
           <View style={[styles.field, styles.halfField]}>
@@ -217,7 +220,7 @@ export default function ProfileScreen() {
               onChangeText={setHeightCm}
               keyboardType="numbers-and-punctuation"
               placeholder="175"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
           </View>
         </View>
@@ -257,17 +260,17 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.recommendedMacroRow}>
             <View style={styles.recommendedMacroItem}>
-              <Text style={[styles.recommendedMacroValue, { color: Colors.proteine }]}>{stats.recommendedMacros.goalProtein}g</Text>
+              <Text style={[styles.recommendedMacroValue, { color: colors.proteine }]}>{stats.recommendedMacros.goalProtein}g</Text>
               <Text style={styles.recommendedMacroLabel}>Protein</Text>
             </View>
             <View style={styles.recommendedMacroDivider} />
             <View style={styles.recommendedMacroItem}>
-              <Text style={[styles.recommendedMacroValue, { color: Colors.carbohydrates }]}>{stats.recommendedMacros.goalCarbs}g</Text>
+              <Text style={[styles.recommendedMacroValue, { color: colors.carbohydrates }]}>{stats.recommendedMacros.goalCarbs}g</Text>
               <Text style={styles.recommendedMacroLabel}>Carbs</Text>
             </View>
             <View style={styles.recommendedMacroDivider} />
             <View style={styles.recommendedMacroItem}>
-              <Text style={[styles.recommendedMacroValue, { color: Colors.fats }]}>{stats.recommendedMacros.goalFat}g</Text>
+              <Text style={[styles.recommendedMacroValue, { color: colors.fats }]}>{stats.recommendedMacros.goalFat}g</Text>
               <Text style={styles.recommendedMacroLabel}>Fat</Text>
             </View>
           </View>
@@ -283,7 +286,7 @@ export default function ProfileScreen() {
               onChangeText={setGoalCalories}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.maintenanceCalories)}
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
           </View>
           <View style={[styles.field, styles.halfField]}>
@@ -294,7 +297,7 @@ export default function ProfileScreen() {
               onChangeText={setWaterGoalMl}
               keyboardType="numbers-and-punctuation"
               placeholder={String(DEFAULT_PROFILE.waterGoalMl)}
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
           </View>
         </View>
@@ -303,7 +306,7 @@ export default function ProfileScreen() {
         <Text style={styles.macrosSectionLabel}>Macros</Text>
         <View style={styles.macrosRow}>
           <View style={styles.macroInputCard}>
-            <View style={[styles.macroColorBar, { backgroundColor: Colors.proteine }]} />
+            <View style={[styles.macroColorBar, { backgroundColor: colors.proteine }]} />
             <Text style={styles.macroInputLabel}>Protein</Text>
             <TextInput
               style={styles.macroInput}
@@ -311,12 +314,12 @@ export default function ProfileScreen() {
               onChangeText={setGoalProtein}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalProtein)}
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
             <Text style={styles.macroInputUnit}>g</Text>
           </View>
           <View style={styles.macroInputCard}>
-            <View style={[styles.macroColorBar, { backgroundColor: Colors.carbohydrates }]} />
+            <View style={[styles.macroColorBar, { backgroundColor: colors.carbohydrates }]} />
             <Text style={styles.macroInputLabel}>Carbs</Text>
             <TextInput
               style={styles.macroInput}
@@ -324,12 +327,12 @@ export default function ProfileScreen() {
               onChangeText={setGoalCarbs}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalCarbs)}
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
             <Text style={styles.macroInputUnit}>g</Text>
           </View>
           <View style={styles.macroInputCard}>
-            <View style={[styles.macroColorBar, { backgroundColor: Colors.fats }]} />
+            <View style={[styles.macroColorBar, { backgroundColor: colors.fats }]} />
             <Text style={styles.macroInputLabel}>Fat</Text>
             <TextInput
               style={styles.macroInput}
@@ -337,7 +340,7 @@ export default function ProfileScreen() {
               onChangeText={setGoalFat}
               keyboardType="numbers-and-punctuation"
               placeholder={String(stats.recommendedMacros.goalFat)}
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
             />
             <Text style={styles.macroInputUnit}>g</Text>
           </View>
@@ -347,86 +350,48 @@ export default function ProfileScreen() {
           <Text style={styles.saveButtonText}>Save profile</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Text style={styles.sectionText}>Choose a theme that suits your style.</Text>
+        <View style={styles.themeGrid}>
+          {(Object.keys(Themes) as ThemeType[]).map((t) => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.themeCard, theme === t && styles.themeCardActive]}
+              onPress={() => setTheme(t)}
+            >
+              <Text style={[styles.themeLabel, theme === t && styles.themeLabelActive]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   content: {
     padding: 16,
     paddingBottom: 28,
     gap: 14,
   },
-  heroCard: {
-    backgroundColor: Colors.secondaryBackground,
-    borderRadius: 16,
-    padding: 18,
-  },
-  eyebrow: {
-    color: Colors.textDim,
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  heroTitle: {
-    color: Colors.white,
-    fontSize: 36,
-    fontWeight: "700",
-  },
-  heroText: {
-    color: Colors.text,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  heroStats: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 16,
-  },
-  statPill: {
-    flex: 1,
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 12,
-    padding: 12,
-  },
-  statValue: {
-    color: Colors.white,
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  statLabel: {
-    color: Colors.textDim,
-    fontSize: 12,
-    marginTop: 3,
-  },
-  primaryButton: {
-    backgroundColor: Colors.bar,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: Colors.black,
-    fontSize: 15,
-    fontWeight: "700",
-  },
   section: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 16,
     padding: 16,
   },
   sectionTitle: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 18,
     fontWeight: "700",
   },
   sectionText: {
-    color: Colors.text,
+    color: colors.text,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 6,
@@ -436,13 +401,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   label: {
-    color: Colors.text,
+    color: colors.text,
     fontSize: 13,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.tabBackground,
-    color: Colors.white,
+    backgroundColor: colors.tabBackground,
+    color: colors.white,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -452,14 +417,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  threeColRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
   halfField: {
-    flex: 1,
-  },
-  thirdField: {
     flex: 1,
   },
   segmentedControl: {
@@ -468,7 +426,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
@@ -476,21 +434,21 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   segmentActive: {
-    borderColor: Colors.bar,
+    borderColor: colors.bar,
   },
   segmentText: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 14,
     fontWeight: "600",
   },
   segmentTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   activityList: {
     gap: 8,
   },
   activityCard: {
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 12,
     padding: 12,
     flexDirection: "row",
@@ -500,22 +458,22 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   activityCardActive: {
-    borderColor: Colors.bar,
+    borderColor: colors.bar,
   },
   activityCopy: {
     flex: 1,
     paddingRight: 12,
   },
   activityTitle: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 14,
     fontWeight: "600",
   },
   activityTitleActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   activityHint: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 12,
     marginTop: 2,
   },
@@ -524,22 +482,22 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: Colors.rosyGranite,
+    borderColor: colors.outlineVariant,
   },
   radioActive: {
-    borderColor: Colors.bar,
-    backgroundColor: Colors.bar,
+    borderColor: colors.bar,
+    backgroundColor: colors.bar,
   },
   recommendedCard: {
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 16,
     padding: 18,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: Colors.bar + "55",
+    borderColor: colors.bar + "55",
   },
   recommendedEyebrow: {
-    color: Colors.bar,
+    color: colors.bar,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1,
@@ -553,13 +511,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   recommendedCalValue: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 40,
     fontWeight: "800",
     lineHeight: 42,
   },
   recommendedCalUnit: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 15,
     fontWeight: "500",
     paddingBottom: 5,
@@ -567,7 +525,7 @@ const styles = StyleSheet.create({
   recommendedMacroRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 12,
   },
@@ -578,19 +536,19 @@ const styles = StyleSheet.create({
   recommendedMacroDivider: {
     width: 1,
     height: 32,
-    backgroundColor: Colors.rosyGranite + "44",
+    backgroundColor: colors.outlineVariant + "44",
   },
   recommendedMacroValue: {
     fontSize: 20,
     fontWeight: "800",
   },
   recommendedMacroLabel: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 11,
     marginTop: 2,
   },
   macrosSectionLabel: {
-    color: Colors.text,
+    color: colors.text,
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 8,
@@ -602,7 +560,7 @@ const styles = StyleSheet.create({
   },
   macroInputCard: {
     flex: 1,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
@@ -618,15 +576,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 12,
   },
   macroInputLabel: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 11,
     fontWeight: "600",
     marginTop: 6,
     marginBottom: 6,
   },
   macroInput: {
-    backgroundColor: Colors.background,
-    color: Colors.white,
+    backgroundColor: colors.background,
+    color: colors.white,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 8,
@@ -636,20 +594,47 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   macroInputUnit: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 11,
     marginTop: 4,
   },
   saveButton: {
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.primaryContainer,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: "center",
     marginTop: 14,
   },
   saveButtonText: {
-    color: Colors.white,
+    color: colors.onPrimary,
     fontSize: 15,
     fontWeight: "700",
+  },
+  themeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  themeCard: {
+    flex: 1,
+    minWidth: "30%",
+    backgroundColor: colors.tabBackground,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  themeCardActive: {
+    borderColor: colors.primary,
+  },
+  themeLabel: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  themeLabelActive: {
+    color: colors.white,
   },
 });

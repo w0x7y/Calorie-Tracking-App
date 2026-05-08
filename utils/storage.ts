@@ -8,6 +8,7 @@ const KEYS = {
   PROFILE: "profile",
   PROFILE_HISTORY: "profile_history",
   CUSTOM_ITEMS: "custom_items",
+  THEME: "theme",
 };
 
 // --- Meal Entries ---
@@ -126,4 +127,14 @@ export async function deleteCustomItem(id: string): Promise<void> {
   const items = await getCustomItems();
   const filtered = items.filter((item) => item.id !== id);
   await AsyncStorage.setItem(KEYS.CUSTOM_ITEMS, JSON.stringify(filtered));
+}
+
+// --- Theme ---
+
+export async function getTheme(): Promise<string | null> {
+  return await AsyncStorage.getItem(KEYS.THEME);
+}
+
+export async function saveTheme(theme: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.THEME, theme);
 }

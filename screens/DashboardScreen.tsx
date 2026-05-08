@@ -22,7 +22,7 @@ import {
 } from "../utils/storage";
 import { calculateTotals, formatDate, todayISO } from "../utils/nutrition";
 import { DailyTotals, MealEntry } from "../types";
-import { Colors } from "../style/theme";
+import { useTheme } from "../style/ThemeContext";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 const DEFAULT_GOAL_CALORIES = 2000;
@@ -32,13 +32,6 @@ const DAY_PILL_GAP = 8;
 const DAY_PILL_FULL_WIDTH = DAY_PILL_WIDTH + DAY_PILL_GAP;
 const HORIZONTAL_PAGE_PADDING = 20;
 const WATER_ADJUSTMENTS = [-500, -250, -100, 100, 250, 500] as const;
-
-const MEAL_COLORS: Record<string, string> = {
-  Breakfast: Colors.mealBreakfast,
-  Lunch: Colors.mealLunch,
-  Dinner: Colors.mealDinner,
-  Snacks: Colors.mealSnacks,
-};
 
 function shiftIsoDate(iso: string, days: number): string {
   const date = new Date(`${iso}T00:00:00`);
@@ -62,6 +55,16 @@ function mealEntryGrams(entry: MealEntry): number {
 }
 
 export default function DashboardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const MEAL_COLORS: Record<string, string> = useMemo(() => ({
+    Breakfast: colors.mealBreakfast,
+    Lunch: colors.mealLunch,
+    Dinner: colors.mealDinner,
+    Snacks: colors.mealSnacks,
+  }), [colors]);
+
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [totals, setTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [goalCalories, setGoalCalories] = useState(DEFAULT_GOAL_CALORIES);
@@ -214,14 +217,14 @@ export default function DashboardScreen() {
           <View style={[styles.card, styles.caloriesCard]}>
             <View style={styles.cardTitleRow}>
               <Text style={styles.cardTitle}>Calories</Text>
-              <Ionicons name="flame-outline" size={16} color={Colors.primaryContainer} />
+              <Ionicons name="flame-outline" size={16} color={colors.primaryContainer} />
             </View>
             <Text style={styles.bigNumber}>{Math.round(totals.calories).toLocaleString()}</Text>
             <Text style={styles.sub}>/ {goalCalories.toLocaleString()} kcal</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
-            <Text style={[styles.remaining, remaining < 0 && { color: Colors.error }]}>
+            <Text style={[styles.remaining, remaining < 0 && { color: colors.error }]}>
               {remaining > 0 ? `${Math.round(remaining)} remaining` : remaining === 0 ? "Goal reached!" : `${Math.abs(Math.round(remaining))} over goal`}
             </Text>
           </View>
@@ -232,7 +235,7 @@ export default function DashboardScreen() {
             <View style={styles.waterCardContent}>
               <View style={styles.cardTitleRow}>
                 <Text style={styles.waterTitle}>Water</Text>
-                <Ionicons name="water-outline" size={16} color={Colors.waterAccent} />
+                <Ionicons name="water-outline" size={16} color={colors.waterAccent} />
               </View>
               <Text style={styles.waterAmount}>{waterLitres}</Text>
               <Text style={styles.waterUnit}>litres</Text>
@@ -245,9 +248,9 @@ export default function DashboardScreen() {
         {/* Macros */}
         <View style={styles.macroRow}>
           {[
-            { label: "PROTEIN", value: totals.protein, goal: goalProtein, color: Colors.proteine },
-            { label: "CARBS",   value: totals.carbs,   goal: goalCarbs,   color: Colors.carbohydrates },
-            { label: "FAT",     value: totals.fat,     goal: goalFat,     color: Colors.fats },
+            { label: "PROTEIN", value: totals.protein, goal: goalProtein, color: colors.proteine },
+            { label: "CARBS",   value: totals.carbs,   goal: goalCarbs,   color: colors.carbohydrates },
+            { label: "FAT",     value: totals.fat,     goal: goalFat,     color: colors.fats },
           ].map((m) => {
             const macroProgress = m.goal > 0 ? Math.min(m.value / m.goal, 1) : 0;
             return (
@@ -285,7 +288,7 @@ export default function DashboardScreen() {
               <View style={styles.mealDivider} />
               {entries.length === 0 ? (
                 <TouchableOpacity style={styles.addMealBtn}>
-                  <Ionicons name="add" size={14} color={Colors.textDim} />
+                  <Ionicons name="add" size={14} color={colors.textDim} />
                   <Text style={styles.addMealText}>Add {type}</Text>
                 </TouchableOpacity>
               ) : (
@@ -295,7 +298,7 @@ export default function DashboardScreen() {
                     <Text style={styles.foodName}>{e.food.name.charAt(0).toUpperCase() + e.food.name.slice(1)}</Text>
                     <Text style={styles.foodCals}>{Math.round(e.food.calories * e.servings)} kcal</Text>
                     <TouchableOpacity onPress={() => openMealEditor(e)} hitSlop={8} style={styles.editIcon}>
-                      <Ionicons name="create-outline" size={15} color={Colors.textDim} />
+                      <Ionicons name="create-outline" size={15} color={colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -359,10 +362,10 @@ export default function DashboardScreen() {
                 const servingSize = editingMeal?.food.servingSize ?? 100;
                 const multiplier = grams / servingSize;
                 return [
-                  { label: "Cal",     value: Math.round((editingMeal?.food.calories ?? 0) * multiplier),          color: Colors.bar },
-                  { label: "Protein", value: `${Math.round((editingMeal?.food.protein ?? 0) * multiplier)}g`,     color: Colors.proteine },
-                  { label: "Carbs",   value: `${Math.round((editingMeal?.food.carbs ?? 0) * multiplier)}g`,       color: Colors.carbohydrates },
-                  { label: "Fat",     value: `${Math.round((editingMeal?.food.fat ?? 0) * multiplier)}g`,         color: Colors.fats },
+                  { label: "Cal",     value: Math.round((editingMeal?.food.calories ?? 0) * multiplier),          color: colors.bar },
+                  { label: "Protein", value: `${Math.round((editingMeal?.food.protein ?? 0) * multiplier)}g`,     color: colors.proteine },
+                  { label: "Carbs",   value: `${Math.round((editingMeal?.food.carbs ?? 0) * multiplier)}g`,       color: colors.carbohydrates },
+                  { label: "Fat",     value: `${Math.round((editingMeal?.food.fat ?? 0) * multiplier)}g`,         color: colors.fats },
                 ].map((macro) => (
                   <View key={macro.label} style={[styles.editMacroPill, { borderColor: macro.color }]}>
                     <Text style={[styles.editMacroValue, { color: macro.color }]}>{macro.value}</Text>
@@ -384,8 +387,8 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
   content: { paddingHorizontal: HORIZONTAL_PAGE_PADDING, paddingTop: 12, paddingBottom: 32 },
 
@@ -393,7 +396,7 @@ const styles = StyleSheet.create({
   dayStrip: { paddingBottom: 14 },
   dayPill: {
     width: DAY_PILL_WIDTH,
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
@@ -401,89 +404,89 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   dayPillSpaced: { marginRight: DAY_PILL_GAP },
-  dayPillToday: { backgroundColor: Colors.secondaryContainer, borderColor: Colors.todayHighlight, borderWidth: 1.5 },
-  dayPillActive: { borderColor: Colors.bar, borderWidth: 1.5 },
-  dayPillWeekday: { color: Colors.textDim, fontSize: 11, fontWeight: "600" },
-  dayPillDay: { color: Colors.text, fontSize: 17, fontWeight: "700", marginTop: 2 },
-  dayPillTodayText: { color: Colors.onTodayHighlight },
-  dayPillTextActive: { color: Colors.primary },
+  dayPillToday: { backgroundColor: colors.secondaryContainer, borderColor: colors.todayHighlight, borderWidth: 1.5 },
+  dayPillActive: { borderColor: colors.bar, borderWidth: 1.5 },
+  dayPillWeekday: { color: colors.textDim, fontSize: 11, fontWeight: "600" },
+  dayPillDay: { color: colors.text, fontSize: 17, fontWeight: "700", marginTop: 2 },
+  dayPillTodayText: { color: colors.onTodayHighlight },
+  dayPillTextActive: { color: colors.primary },
 
-  date: { fontSize: 22, fontWeight: "700", marginBottom: 14, color: Colors.text },
+  date: { fontSize: 22, fontWeight: "700", marginBottom: 14, color: colors.text },
 
   // Summary row
   topSummaryRow: { flexDirection: "row", gap: 12, marginBottom: 12, alignItems: "stretch" },
   card: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
   },
-  caloriesCard: { flex: 1, marginBottom: 0, borderWidth: 1, borderColor: Colors.outlineVariant },
+  caloriesCard: { flex: 1, marginBottom: 0, borderWidth: 1, borderColor: colors.outlineVariant },
   cardTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  cardTitle: { fontSize: 13, color: Colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
-  bigNumber: { fontSize: 48, fontWeight: "800", color: Colors.text, letterSpacing: -1, lineHeight: 56 },
-  sub: { color: Colors.textDim, fontSize: 13, marginBottom: 10 },
-  progressBar: { height: 6, backgroundColor: Colors.outlineVariant, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: Colors.bar, borderRadius: 3 },
-  remaining: { marginTop: 8, color: Colors.primary, fontSize: 13, fontWeight: "500" },
+  cardTitle: { fontSize: 13, color: colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
+  bigNumber: { fontSize: 48, fontWeight: "800", color: colors.text, letterSpacing: -1, lineHeight: 56 },
+  sub: { color: colors.textDim, fontSize: 13, marginBottom: 10 },
+  progressBar: { height: 6, backgroundColor: colors.outlineVariant, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: colors.bar, borderRadius: 3 },
+  remaining: { marginTop: 8, color: colors.primary, fontSize: 13, fontWeight: "500" },
 
   // Water card
   waterTopCard: {
     flex: 1,
     minHeight: 168,
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1.5,
-    borderColor: Colors.outlineVariant,
+    borderColor: colors.outlineVariant,
     marginBottom: 0,
   },
-  waterFillOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: Colors.waterFill },
+  waterFillOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.waterFill },
   waterCardContent: { padding: 14, flex: 1, zIndex: 1 },
-  waterTitle: { fontSize: 13, color: Colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
-  waterAmount: { fontSize: 40, fontWeight: "800", color: Colors.waterAccent, marginTop: 4, letterSpacing: -1 },
-  waterUnit: { fontSize: 12, color: Colors.waterAccent, fontWeight: "500", marginTop: -2 },
-  waterSub: { color: Colors.textDim, fontSize: 12, marginTop: 6 },
-  waterPct: { color: Colors.waterAccent, fontSize: 11, marginTop: 2, fontWeight: "600" },
+  waterTitle: { fontSize: 13, color: colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
+  waterAmount: { fontSize: 40, fontWeight: "800", color: colors.waterAccent, marginTop: 4, letterSpacing: -1 },
+  waterUnit: { fontSize: 12, color: colors.waterAccent, fontWeight: "500", marginTop: -2 },
+  waterSub: { color: colors.textDim, fontSize: 12, marginTop: 6 },
+  waterPct: { color: colors.waterAccent, fontSize: 11, marginTop: 2, fontWeight: "600" },
 
   // Macro row
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroCard: {
     flex: 1,
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 12,
     padding: 12,
     borderTopWidth: 3,
   },
   macroLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.8, marginBottom: 4 },
-  macroValue: { fontSize: 22, fontWeight: "700", color: Colors.text },
-  macroUnit: { fontSize: 13, fontWeight: "400", color: Colors.textDim },
-  macroProgressBar: { height: 4, backgroundColor: Colors.outlineVariant, borderRadius: 2, overflow: "hidden", marginTop: 8 },
+  macroValue: { fontSize: 22, fontWeight: "700", color: colors.text },
+  macroUnit: { fontSize: 13, fontWeight: "400", color: colors.textDim },
+  macroProgressBar: { height: 4, backgroundColor: colors.outlineVariant, borderRadius: 2, overflow: "hidden", marginTop: 8 },
   macroProgressFill: { height: "100%", borderRadius: 2 },
-  macroGoalText: { fontSize: 11, color: Colors.textDim, marginTop: 4 },
+  macroGoalText: { fontSize: 11, color: colors.textDim, marginTop: 4 },
 
   // Meals section
   mealsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  mealsTitle: { fontSize: 20, fontWeight: "700", color: Colors.text },
-  viewAll: { fontSize: 14, color: Colors.primary, fontWeight: "600" },
+  mealsTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
+  viewAll: { fontSize: 14, color: colors.primary, fontWeight: "600" },
 
   mealCard: { borderLeftWidth: 4, paddingLeft: 12, marginBottom: 10 },
   mealHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   mealType: { fontSize: 16, fontWeight: "700" },
-  mealCals: { color: Colors.textDim, fontSize: 14 },
-  mealDivider: { height: 1, backgroundColor: Colors.outlineVariant, marginBottom: 8 },
+  mealCals: { color: colors.textDim, fontSize: 14 },
+  mealDivider: { height: 1, backgroundColor: colors.outlineVariant, marginBottom: 8 },
   addMealBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
-  addMealText: { color: Colors.textDim, fontSize: 14 },
+  addMealText: { color: colors.textDim, fontSize: 14 },
   foodRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, gap: 8 },
   foodDot: { width: 7, height: 7, borderRadius: 4 },
-  foodName: { color: Colors.text, flex: 1, fontSize: 14 },
-  foodCals: { color: Colors.textDim, fontSize: 13 },
+  foodName: { color: colors.text, flex: 1, fontSize: 14 },
+  foodCals: { color: colors.textDim, fontSize: 13 },
   editIcon: { paddingLeft: 4 },
 
   // Modals
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
   modalSheet: {
-    backgroundColor: Colors.cardSurface,
+    backgroundColor: colors.cardSurface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
@@ -491,29 +494,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.05)",
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.outlineVariant, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { color: Colors.text, fontSize: 20, fontWeight: "700" },
-  modalSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 18 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: "center", marginBottom: 20 },
+  modalTitle: { color: colors.text, fontSize: 20, fontWeight: "700" },
+  modalSub: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 18 },
   waterInputWrap: { alignItems: "center", marginBottom: 20 },
-  waterInput: { color: Colors.text, fontSize: 36, fontWeight: "700", textAlign: "center", minWidth: 110 },
-  waterInputLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
+  waterInput: { color: colors.text, fontSize: 36, fontWeight: "700", textAlign: "center", minWidth: 110 },
+  waterInputLabel: { color: colors.textDim, fontSize: 12, marginTop: 2 },
   adjustmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
-  adjustmentBtn: { width: "31%", backgroundColor: Colors.secondaryBackground, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  adjustmentBtnText: { color: Colors.text, fontSize: 13, fontWeight: "600" },
-  confirmBtn: { backgroundColor: Colors.primaryContainer, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
-  confirmBtnText: { color: Colors.onPrimary, fontSize: 15, fontWeight: "700" },
+  adjustmentBtn: { width: "31%", backgroundColor: colors.secondaryBackground, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  adjustmentBtnText: { color: colors.text, fontSize: 13, fontWeight: "600" },
+  confirmBtn: { backgroundColor: colors.primaryContainer, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
+  confirmBtnText: { color: colors.onPrimary, fontSize: 15, fontWeight: "700" },
   modalMealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 },
   modalMealBtn: {
     flexDirection: "row", alignItems: "center", gap: 8, width: "47%",
-    borderWidth: 1.5, borderRadius: 12, padding: 14, backgroundColor: Colors.secondaryBackground,
+    borderWidth: 1.5, borderRadius: 12, padding: 14, backgroundColor: colors.secondaryBackground,
   },
-  modalMealBtnActive: { backgroundColor: Colors.background },
+  modalMealBtnActive: { backgroundColor: colors.background },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
-  mealBtnText: { color: Colors.text, fontSize: 14, fontWeight: "600" },
+  mealBtnText: { color: colors.text, fontSize: 14, fontWeight: "600" },
   editMacroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   editMacroPill: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 8, alignItems: "center" },
   editMacroValue: { fontSize: 14, fontWeight: "700" },
-  editMacroLabel: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
+  editMacroLabel: { color: colors.textDim, fontSize: 11, marginTop: 2 },
   cancelBtn: { alignItems: "center", paddingTop: 14 },
-  cancelBtnText: { color: Colors.textDim, fontSize: 15 },
+  cancelBtnText: { color: colors.textDim, fontSize: 15 },
 });

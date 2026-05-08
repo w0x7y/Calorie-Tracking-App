@@ -22,16 +22,9 @@ import {
   saveProfile,
 } from "../utils/storage";
 import { generateId, todayISO } from "../utils/nutrition";
-import { Colors } from "../style/theme";
+import { useTheme } from "../style/ThemeContext";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
-
-const MEAL_COLORS: Record<string, string> = {
-  Breakfast: "#FF9F43",
-  Lunch: "#00D2D3",
-  Dinner: "#A29BFE",
-  Snacks: "#FD79A8",
-};
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
@@ -56,16 +49,18 @@ function MiniLineChart({
   color,
   unit,
   width,
+  colors,
 }: {
   data: ChartPoint[];
   color: string;
   unit: string;
   width: number;
+  colors: any;
 }) {
   if (data.length < 2) {
     return (
       <View style={{ alignItems: "center", paddingVertical: 12 }}>
-        <Text style={{ color: Colors.textDim, fontSize: 13 }}>
+        <Text style={{ color: colors.textDim, fontSize: 13 }}>
           Log at least 2 profile saves to see the chart.
         </Text>
       </View>
@@ -163,7 +158,7 @@ function MiniLineChart({
                   borderRadius: 4,
                   backgroundColor: color,
                   borderWidth: 2,
-                  borderColor: Colors.secondaryBackground,
+                  borderColor: colors.secondaryBackground,
                 }}
               />
               {showLabel && (
@@ -174,7 +169,7 @@ function MiniLineChart({
                     left: -16,
                     width: 40,
                     textAlign: "center",
-                    color: Colors.white,
+                    color: colors.white,
                     fontSize: 10,
                     fontWeight: "700",
                   }}
@@ -204,7 +199,7 @@ function MiniLineChart({
                 left: x - 20,
                 width: 40,
                 textAlign: "center",
-                color: Colors.textDim,
+                color: colors.textDim,
                 fontSize: 9,
                 top: 4,
               }}
@@ -219,6 +214,16 @@ function MiniLineChart({
 }
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const MEAL_COLORS: Record<string, string> = useMemo(() => ({
+    Breakfast: colors.mealBreakfast,
+    Lunch: colors.mealLunch,
+    Dinner: colors.mealDinner,
+    Snacks: colors.mealSnacks,
+  }), [colors]);
+
   const [foodHistory, setFoodHistory] = useState<MealEntry[]>([]);
   const [profileHistory, setProfileHistory] = useState<ProfileSnapshot[]>([]);
   const [selectedHistoryEntry, setSelectedHistoryEntry] =
@@ -414,14 +419,14 @@ export default function HistoryScreen() {
                 <Ionicons
                   name="add-circle-outline"
                   size={20}
-                  color={Colors.primary}
+                  color={colors.primary}
                 />
               </TouchableOpacity>
               <TouchableOpacity onPress={toggleMetricsExpanded} hitSlop={8}>
                 <Ionicons
                   name={metricsExpanded ? "chevron-up" : "chevron-down"}
                   size={20}
-                  color={Colors.primary}
+                  color={colors.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -460,8 +465,9 @@ export default function HistoryScreen() {
               <View style={styles.chartContainer}>
                 <MiniLineChart
                   data={chartData}
+                  colors={colors}
                   color={
-                    chartMetric === "weight" ? Colors.bar : Colors.proteine
+                    chartMetric === "weight" ? colors.bar : colors.proteine
                   }
                   unit={chartMetric === "weight" ? "kg" : "cm"}
                   width={screenWidth - 32 - 32 - 16}
@@ -486,7 +492,7 @@ export default function HistoryScreen() {
                             <Ionicons
                               name="trash-outline"
                               size={16}
-                              color={Colors.textDim}
+                              color={colors.textDim}
                             />
                           </TouchableOpacity>
                         </View>
@@ -525,7 +531,7 @@ export default function HistoryScreen() {
               <Ionicons
                 name={foodsExpanded ? "chevron-up" : "chevron-down"}
                 size={20}
-                color={Colors.primary}
+                color={colors.primary}
               />
             </TouchableOpacity>
           </View>
@@ -570,7 +576,7 @@ export default function HistoryScreen() {
                       }}
                       hitSlop={8}
                     >
-                      <Ionicons name="add" size={16} color={Colors.white} />
+                      <Ionicons name="add" size={16} color={colors.white} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -610,7 +616,7 @@ export default function HistoryScreen() {
                 <TextInput
                   style={styles.logInput}
                   placeholder="Enter weight"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                   keyboardType="numbers-and-punctuation"
                   value={logWeight}
                   onChangeText={setLogWeight}
@@ -622,7 +628,7 @@ export default function HistoryScreen() {
                 <TextInput
                   style={styles.logInput}
                   placeholder="Enter height"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor={colors.textDim}
                   keyboardType="numbers-and-punctuation"
                   value={logHeight}
                   onChangeText={setLogHeight}
@@ -708,22 +714,22 @@ export default function HistoryScreen() {
                     value: Math.round(
                       (selectedHistoryEntry?.food.calories ?? 0) * s,
                     ),
-                    color: Colors.bar,
+                    color: colors.bar,
                   },
                   {
                     label: "Protein",
                     value: `${Math.round((selectedHistoryEntry?.food.protein ?? 0) * s)}g`,
-                    color: Colors.proteine,
+                    color: colors.proteine,
                   },
                   {
                     label: "Carbs",
                     value: `${Math.round((selectedHistoryEntry?.food.carbs ?? 0) * s)}g`,
-                    color: Colors.carbohydrates,
+                    color: colors.carbohydrates,
                   },
                   {
                     label: "Fat",
                     value: `${Math.round((selectedHistoryEntry?.food.fat ?? 0) * s)}g`,
-                    color: Colors.fats,
+                    color: colors.fats,
                   },
                 ].map((macro) => (
                   <View
@@ -764,114 +770,114 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 28, gap: 14 },
   section: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 12,
     padding: 16,
   },
-  sectionTitle: { color: Colors.white, fontSize: 18, fontWeight: "700" },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
+  sectionTitle: { color: colors.white, fontSize: 18, fontWeight: "700" },
   sectionSub: {
-    color: Colors.textDim,
+    color: colors.textDim,
     fontSize: 13,
     marginTop: 4,
     marginBottom: 14,
   },
-  emptyText: { color: Colors.textDim, fontSize: 14 },
+  emptyText: { color: colors.textDim, fontSize: 14 },
   historyRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: Colors.tabBackground,
+    borderTopColor: colors.tabBackground,
   },
   historyMain: { flex: 1 },
-  foodName: { color: Colors.white, fontSize: 15, fontWeight: "600" },
-  historyMeta: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
-  calories: { color: Colors.primary, fontSize: 14, fontWeight: "700" },
+  foodName: { color: colors.white, fontSize: 15, fontWeight: "600" },
+  historyMeta: { color: colors.textDim, fontSize: 12, marginTop: 3 },
+  calories: { color: colors.primary, fontSize: 14, fontWeight: "700" },
   addBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     alignItems: "center",
     justifyContent: "center",
   },
-  timelineRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
+  chartToggleRow: {
+    flexDirection: "row",
+    backgroundColor: colors.tabBackground,
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+  },
+  chartToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  chartToggleBtnActive: { backgroundColor: colors.secondaryBackground },
+  chartToggleText: { color: colors.textDim, fontSize: 12, fontWeight: "600" },
+  chartToggleTextActive: { color: colors.white },
+  chartContainer: {
+    backgroundColor: colors.tabBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  timelineRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
   timelineDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: Colors.bar,
-    marginTop: 6,
+    backgroundColor: colors.bar,
+    marginTop: 4,
   },
-  timelineContent: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: Colors.tabBackground,
-    paddingTop: 10,
-  },
-  timelineDate: { color: Colors.text, fontSize: 13 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
+  timelineContent: { flex: 1 },
   timelineHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    alignItems: "center",
+    marginBottom: 8,
   },
+  timelineDate: { color: colors.textDim, fontSize: 12, fontWeight: "600" },
   metricRow: { flexDirection: "row", gap: 10 },
   metricCard: {
     flex: 1,
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
-    padding: 12,
-  },
-  metricValue: { color: Colors.white, fontSize: 20, fontWeight: "700" },
-  metricLabel: { color: Colors.textDim, fontSize: 12, marginTop: 3 },
-  chartToggleRow: {
+    backgroundColor: colors.tabBackground,
+    borderRadius: 8,
+    padding: 10,
     flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
+    alignItems: "baseline",
+    gap: 4,
   },
-  chartToggleBtn: {
+  metricValue: { color: colors.white, fontSize: 16, fontWeight: "700" },
+  metricLabel: { color: colors.textDim, fontSize: 12 },
+  modalOverlay: {
     flex: 1,
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "transparent",
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  chartToggleBtnActive: {
-    borderColor: Colors.bar,
+  logModalSheet: {
+    backgroundColor: colors.secondaryBackground,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
   },
-  chartToggleText: {
-    color: Colors.textDim,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  chartToggleTextActive: {
-    color: Colors.white,
-  },
-  chartContainer: {
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 0,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -881,17 +887,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     alignSelf: "center",
     marginBottom: 20,
   },
-  modalTitle: { color: Colors.white, fontSize: 20, fontWeight: "700" },
-  modalSub: {
-    color: Colors.textDim,
-    fontSize: 13,
-    marginTop: 4,
-    marginBottom: 16,
+  modalTitle: { color: colors.white, fontSize: 20, fontWeight: "700" },
+  modalSub: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  logInputGroup: { flexDirection: "row", gap: 12, marginBottom: 20 },
+  logInputWrapper: { flex: 1 },
+  logLabel: { color: colors.textDim, fontSize: 12, marginBottom: 8 },
+  logInput: {
+    backgroundColor: colors.tabBackground,
+    color: colors.white,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
   },
+  saveBtn: {
+    backgroundColor: colors.bar,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  saveBtnText: { color: colors.black, fontSize: 16, fontWeight: "700" },
   gramsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -903,25 +922,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     alignItems: "center",
     justifyContent: "center",
   },
   gramsBtnText: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 22,
     fontWeight: "300",
     lineHeight: 26,
   },
   gramsInputWrap: { alignItems: "center" },
   gramsInput: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
     minWidth: 60,
   },
-  gramsLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
+  gramsLabel: { color: colors.textDim, fontSize: 12, marginTop: 2 },
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroPill: {
     flex: 1,
@@ -931,8 +950,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   macroValue: { fontSize: 15, fontWeight: "700" },
-  macroLabel: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  modalMealText: { color: Colors.textDim, fontSize: 13, marginBottom: 12 },
+  macroLabel: { color: colors.textDim, fontSize: 11, marginTop: 2 },
+  modalMealText: { color: colors.textDim, fontSize: 13, marginBottom: 12 },
   mealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   mealBtn: {
     flexDirection: "row",
@@ -944,35 +963,5 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
-  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
-  logModalSheet: {
-    backgroundColor: Colors.secondaryBackground,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  logInputGroup: { gap: 16, marginBottom: 20 },
-  logInputWrapper: { gap: 8 },
-  logLabel: { color: Colors.white, fontSize: 14, fontWeight: "600" },
-  logInput: {
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: Colors.white,
-    fontSize: 16,
-  },
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  saveBtnText: { color: Colors.secondaryBackground, fontSize: 16, fontWeight: "700" },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  mealBtnText: { color: colors.white, fontSize: 15, fontWeight: "600" },
 });

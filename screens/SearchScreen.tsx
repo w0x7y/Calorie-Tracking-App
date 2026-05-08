@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,18 +15,21 @@ import { searchFoods } from "../utils/api";
 import { addMeal } from "../utils/storage";
 import { generateId, todayISO } from "../utils/nutrition";
 import { Food, MealEntry } from "../types";
-import { Colors } from "../style/theme";
+import { useTheme } from "../style/ThemeContext";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
-const MEAL_COLORS: Record<string, string> = {
-  Breakfast: "#FF9F43",
-  Lunch:     "#00D2D3",
-  Dinner:    "#A29BFE",
-  Snacks:    "#FD79A8",
-};
-
 export default function SearchScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const MEAL_COLORS: Record<string, string> = useMemo(() => ({
+    Breakfast: colors.mealBreakfast,
+    Lunch: colors.mealLunch,
+    Dinner: colors.mealDinner,
+    Snacks: colors.mealSnacks,
+  }), [colors]);
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,7 +78,7 @@ export default function SearchScreen() {
         <TextInput
           style={styles.input}
           placeholder="Search foods..."
-          placeholderTextColor={Colors.textDim}
+          placeholderTextColor={colors.textDim}
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={handleSearch}
@@ -87,7 +90,7 @@ export default function SearchScreen() {
       </View>
 
       {loading && (
-        <ActivityIndicator style={{ marginTop: 20 }} color={Colors.platinum} />
+        <ActivityIndicator style={{ marginTop: 20 }} color={colors.platinum} />
       )}
 
       <FlatList
@@ -180,10 +183,10 @@ export default function SearchScreen() {
                 const baseServingSize = (selectedFood?.servingSize ?? 0) > 0 ? (selectedFood?.servingSize ?? 100) : 100;
                 const s = enteredGrams / baseServingSize;
                 return [
-                  { label: "Cal",     value: Math.round((selectedFood?.calories ?? 0) * s),  color: Colors.bar },
-                  { label: "Protein", value: `${Math.round((selectedFood?.protein ?? 0) * s)}g`, color: Colors.proteine },
-                  { label: "Carbs",   value: `${Math.round((selectedFood?.carbs ?? 0) * s)}g`,   color: Colors.carbohydrates },
-                  { label: "Fat",     value: `${Math.round((selectedFood?.fat ?? 0) * s)}g`,     color: Colors.fats },
+                  { label: "Cal",     value: Math.round((selectedFood?.calories ?? 0) * s),  color: colors.bar },
+                  { label: "Protein", value: `${Math.round((selectedFood?.protein ?? 0) * s)}g`, color: colors.proteine },
+                  { label: "Carbs",   value: `${Math.round((selectedFood?.carbs ?? 0) * s)}g`,   color: colors.carbohydrates },
+                  { label: "Fat",     value: `${Math.round((selectedFood?.fat ?? 0) * s)}g`,     color: colors.fats },
                 ].map((m) => (
                   <View key={m.label} style={[styles.macroPill, { borderColor: m.color }]}>
                     <Text style={[styles.macroPillVal, { color: m.color }]}>{m.value}</Text>
@@ -217,28 +220,28 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, padding: 16 },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
   searchRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   input: {
     flex: 1,
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
-    color: Colors.white,
+    color: colors.white,
     elevation: 2,
   },
   searchBtn: {
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     borderRadius: 10,
     paddingHorizontal: 18,
     justifyContent: "center",
   },
-  searchBtnText: { color: Colors.white, fontWeight: "700", fontSize: 16 },
+  searchBtnText: { color: colors.white, fontWeight: "700", fontSize: 16 },
   resultCard: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderRadius: 10,
     padding: 14,
     marginBottom: 8,
@@ -247,18 +250,19 @@ const styles = StyleSheet.create({
   },
   resultLeft: { flex: 1 },
   resultRight: { alignItems: "flex-end", justifyContent: "center" },
-  foodName: { fontSize: 15, fontWeight: "600", color: Colors.white },
-  brand: { fontSize: 12, color: Colors.textDim, marginTop: 2 },
-  serving: { fontSize: 12, color: Colors.textDim, marginTop: 2 },
-  calories: { fontSize: 22, fontWeight: "bold", color: Colors.primary },
-  kcal: { fontSize: 12, color: Colors.textDim },
-  hint: { textAlign: "center", color: Colors.textDim, marginTop: 40, fontSize: 15 },
+  foodName: { fontSize: 15, fontWeight: "600", color: colors.white },
+  brand: { fontSize: 12, color: colors.textDim, marginTop: 2 },
+  serving: { fontSize: 12, color: colors.textDim, marginTop: 2 },
+  calories: { fontSize: 22, fontWeight: "bold", color: colors.primary },
+  kcal: { fontSize: 12, color: colors.textDim },
+  hint: { textAlign: "center", color: colors.textDim, marginTop: 40, fontSize: 15 },
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalSheet: {
-    backgroundColor: Colors.secondaryBackground,
+    backgroundColor: colors.secondaryBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -266,11 +270,11 @@ const styles = StyleSheet.create({
   },
   handle: {
     width: 40, height: 4, borderRadius: 2,
-    backgroundColor: Colors.rosyGranite,
+    backgroundColor: colors.rosyGranite,
     alignSelf: "center", marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20, fontWeight: "700", color: Colors.white, marginBottom: 14,
+    fontSize: 20, fontWeight: "700", color: colors.white, marginBottom: 14,
   },
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroPill: {
@@ -278,24 +282,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8, alignItems: "center",
   },
   macroPillVal: { fontSize: 15, fontWeight: "700" },
-  macroPillLabel: { fontSize: 11, color: Colors.textDim, marginTop: 2 },
+  macroPillLabel: { fontSize: 11, color: colors.textDim, marginTop: 2 },
   servingsRow: {
     flexDirection: "row", alignItems: "center",
     justifyContent: "center", gap: 16, marginBottom: 20,
   },
   servingsBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.tabBackground,
+    backgroundColor: colors.tabBackground,
     alignItems: "center", justifyContent: "center",
   },
-  servingsBtnText: { color: Colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
+  servingsBtnText: { color: colors.white, fontSize: 22, fontWeight: "300", lineHeight: 26 },
   servingsInputWrap: { alignItems: "center" },
   servingsInput: {
-    color: Colors.white, fontSize: 28, fontWeight: "700",
+    color: colors.white, fontSize: 28, fontWeight: "700",
     textAlign: "center", minWidth: 60,
   },
-  servingsLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
-  modalSub: { fontSize: 13, color: Colors.textDim, marginBottom: 12 },
+  servingsLabel: { color: colors.textDim, fontSize: 12, marginTop: 2 },
+  modalSub: { fontSize: 13, color: colors.textDim, marginBottom: 12 },
   mealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
   mealBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -303,7 +307,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
-  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  mealBtnText: { color: colors.white, fontSize: 15, fontWeight: "600" },
   cancelBtn: { alignItems: "center", paddingTop: 4 },
-  cancelText: { color: Colors.textDim, fontSize: 15 },
+  cancelText: { color: colors.textDim, fontSize: 15 },
 });
