@@ -26,18 +26,18 @@ import { Colors } from "../style/theme";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 const DEFAULT_GOAL_CALORIES = 2000;
-const DEFAULT_WATER_GOAL_ML = 2000;
+const DEFAULT_WATER_GOAL_ML = 2500;
 const DAY_PILL_WIDTH = 58;
 const DAY_PILL_GAP = 8;
 const DAY_PILL_FULL_WIDTH = DAY_PILL_WIDTH + DAY_PILL_GAP;
-const HORIZONTAL_PAGE_PADDING = 16;
+const HORIZONTAL_PAGE_PADDING = 20;
 const WATER_ADJUSTMENTS = [-500, -250, -100, 100, 250, 500] as const;
 
 const MEAL_COLORS: Record<string, string> = {
-  Breakfast: "#FF9F43",
-  Lunch: "#00D2D3",
-  Dinner: "#A29BFE",
-  Snacks: "#FD79A8",
+  Breakfast: Colors.mealBreakfast,
+  Lunch: Colors.mealLunch,
+  Dinner: Colors.mealDinner,
+  Snacks: Colors.mealSnacks,
 };
 
 function shiftIsoDate(iso: string, days: number): string {
@@ -63,12 +63,7 @@ function mealEntryGrams(entry: MealEntry): number {
 
 export default function DashboardScreen() {
   const [meals, setMeals] = useState<MealEntry[]>([]);
-  const [totals, setTotals] = useState<DailyTotals>({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-  });
+  const [totals, setTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fat: 0 });
   const [goalCalories, setGoalCalories] = useState(DEFAULT_GOAL_CALORIES);
   const [goalProtein, setGoalProtein] = useState(0);
   const [goalCarbs, setGoalCarbs] = useState(0);
@@ -91,30 +86,19 @@ export default function DashboardScreen() {
     () => Array.from({ length: 21 }, (_, index) => shiftIsoDate(today, index - 10)),
     [today],
   );
-
   const todayIndex = 10;
   const stripViewportWidth = Math.max(0, screenWidth - HORIZONTAL_PAGE_PADDING * 2);
   const sidePadding = Math.max(0, Math.round((stripViewportWidth - DAY_PILL_WIDTH) / 2));
 
   function centerToday(animated: boolean) {
-    dayStripRef.current?.scrollTo({
-      x: todayIndex * DAY_PILL_FULL_WIDTH,
-      animated,
-    });
+    dayStripRef.current?.scrollTo({ x: todayIndex * DAY_PILL_FULL_WIDTH, animated });
   }
-
   function clearRecenterTimer() {
-    if (recenterTimeoutRef.current) {
-      clearTimeout(recenterTimeoutRef.current);
-      recenterTimeoutRef.current = null;
-    }
+    if (recenterTimeoutRef.current) { clearTimeout(recenterTimeoutRef.current); recenterTimeoutRef.current = null; }
   }
-
   function scheduleRecenter() {
     clearRecenterTimer();
-    recenterTimeoutRef.current = setTimeout(() => {
-      centerToday(true);
-    }, 5000);
+    recenterTimeoutRef.current = setTimeout(() => centerToday(true), 5000);
   }
 
   function reload(date: string = selectedDate) {
@@ -130,15 +114,11 @@ export default function DashboardScreen() {
     });
   }
 
-  useFocusEffect(
-    React.useCallback(() => {
-      reload(selectedDate);
-      scheduleRecenter();
-      return () => {
-        clearRecenterTimer();
-      };
-    }, [selectedDate]),
-  );
+  useFocusEffect(React.useCallback(() => {
+    reload(selectedDate);
+    scheduleRecenter();
+    return () => { clearRecenterTimer(); };
+  }, [selectedDate]));
 
   useEffect(() => {
     const timer = setTimeout(() => centerToday(false), 50);
@@ -148,37 +128,17 @@ export default function DashboardScreen() {
   async function handleDelete(id: string, name: string) {
     Alert.alert("Remove", `Remove ${name}?`, [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          await deleteMeal(id);
-          reload(selectedDate);
-        },
-      },
+      { text: "Remove", style: "destructive", onPress: async () => { await deleteMeal(id); reload(selectedDate); } },
     ]);
   }
 
-  function openWaterModal() {
-    setDraftWaterMl(String(waterMl));
-    setWaterModalVisible(true);
-  }
-
-  function closeWaterModal() {
-    setWaterModalVisible(false);
-    setDraftWaterMl(String(waterMl));
-  }
-
-  function updateDraftWater(nextAmount: number) {
-    setDraftWaterMl(String(Math.max(0, nextAmount)));
-  }
-
+  function openWaterModal() { setDraftWaterMl(String(waterMl)); setWaterModalVisible(true); }
+  function closeWaterModal() { setWaterModalVisible(false); setDraftWaterMl(String(waterMl)); }
   function adjustDraftWater(delta: number) {
     const current = parseFloat(draftWaterMl);
     const safeCurrent = Number.isFinite(current) ? current : waterMl;
-    updateDraftWater(safeCurrent + delta);
+    setDraftWaterMl(String(Math.max(0, safeCurrent + delta)));
   }
-
   async function handleConfirmWater() {
     const parsed = parseFloat(draftWaterMl);
     const safeAmount = Number.isFinite(parsed) && parsed >= 0 ? parsed : waterMl;
@@ -192,26 +152,13 @@ export default function DashboardScreen() {
     setDraftMealType(entry.mealType);
     setDraftMealGrams(String(Math.max(25, mealEntryGrams(entry))));
   }
-
-  function closeMealEditor() {
-    setEditingMeal(null);
-    setDraftMealType("Breakfast");
-    setDraftMealGrams("100");
-  }
-
+  function closeMealEditor() { setEditingMeal(null); setDraftMealType("Breakfast"); setDraftMealGrams("100"); }
   async function handleSaveMealEdit() {
     if (!editingMeal) return;
     const parsedGrams = parseFloat(draftMealGrams);
     const validGrams = Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : mealEntryGrams(editingMeal);
     const baseServingSize = editingMeal.food.servingSize > 0 ? editingMeal.food.servingSize : 100;
-
-    const updatedEntry: MealEntry = {
-      ...editingMeal,
-      mealType: draftMealType,
-      servings: validGrams / baseServingSize,
-      date: selectedDate,
-    };
-
+    const updatedEntry: MealEntry = { ...editingMeal, mealType: draftMealType, servings: validGrams / baseServingSize, date: selectedDate };
     await updateMeal(updatedEntry);
     closeMealEditor();
     reload(selectedDate);
@@ -220,10 +167,13 @@ export default function DashboardScreen() {
   const remaining = goalCalories - totals.calories;
   const progress = goalCalories > 0 ? Math.min(totals.calories / goalCalories, 1) : 0;
   const waterProgress = waterGoalMl > 0 ? Math.min(waterMl / waterGoalMl, 1) : 0;
+  const waterLitres = (waterMl / 1000).toFixed(1);
+  const waterGoalLitres = (waterGoalMl / 1000).toFixed(1);
 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {/* Day strip */}
         <ScrollView
           ref={dayStripRef}
           horizontal
@@ -239,34 +189,16 @@ export default function DashboardScreen() {
             const isSelected = date === selectedDate;
             const isToday = date === today;
             const isLast = index === timelineDates.length - 1;
-
             return (
               <TouchableOpacity
                 key={date}
-                style={[
-                  styles.dayPill,
-                  !isLast && styles.dayPillSpaced,
-                  isToday && styles.dayPillToday,
-                  isSelected && styles.dayPillActive,
-                ]}
+                style={[styles.dayPill, !isLast && styles.dayPillSpaced, isToday && styles.dayPillToday, isSelected && !isToday && styles.dayPillActive]}
                 onPress={() => setSelectedDate(date)}
               >
-                <Text
-                  style={[
-                    styles.dayPillWeekday,
-                    isToday && styles.dayPillTodayText,
-                    isSelected && styles.dayPillTextActive,
-                  ]}
-                >
+                <Text style={[styles.dayPillWeekday, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
                   {label.weekday}
                 </Text>
-                <Text
-                  style={[
-                    styles.dayPillDay,
-                    isToday && styles.dayPillTodayText,
-                    isSelected && styles.dayPillTextActive,
-                  ]}
-                >
+                <Text style={[styles.dayPillDay, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
                   {label.day}
                 </Text>
               </TouchableOpacity>
@@ -276,89 +208,95 @@ export default function DashboardScreen() {
 
         <Text style={styles.date}>{formatDate(selectedDate)}</Text>
 
+        {/* Calories + Water cards */}
         <View style={styles.topSummaryRow}>
+          {/* Calories */}
           <View style={[styles.card, styles.caloriesCard]}>
-            <Text style={styles.cardTitle}>Calories</Text>
-            <Text style={styles.bigNumber}>{Math.round(totals.calories)}</Text>
-            <Text style={styles.sub}>of {goalCalories} goal</Text>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>Calories</Text>
+              <Ionicons name="flame-outline" size={16} color={Colors.primaryContainer} />
+            </View>
+            <Text style={styles.bigNumber}>{Math.round(totals.calories).toLocaleString()}</Text>
+            <Text style={styles.sub}>/ {goalCalories.toLocaleString()} kcal</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
-            <Text style={styles.remaining}>
-              {remaining > 0 ? `${Math.round(remaining)} remaining` : "Goal reached!"}
+            <Text style={[styles.remaining, remaining < 0 && { color: Colors.error }]}>
+              {remaining > 0 ? `${Math.round(remaining)} remaining` : remaining === 0 ? "Goal reached!" : `${Math.abs(Math.round(remaining))} over goal`}
             </Text>
           </View>
 
+          {/* Water */}
           <TouchableOpacity style={styles.waterTopCard} onPress={openWaterModal} activeOpacity={0.9}>
             <View style={[styles.waterFillOverlay, { height: `${waterProgress * 100}%` }]} />
             <View style={styles.waterCardContent}>
-              <Text style={styles.waterTitle}>Water</Text>
-              <Text style={styles.waterAmount}>{Math.round(waterMl)}ml</Text>
-              <Text style={styles.waterSub}>of {waterGoalMl}ml</Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.waterTitle}>Water</Text>
+                <Ionicons name="water-outline" size={16} color={Colors.waterAccent} />
+              </View>
+              <Text style={styles.waterAmount}>{waterLitres}</Text>
+              <Text style={styles.waterUnit}>litres</Text>
+              <Text style={styles.waterSub}>/ {waterGoalLitres} L goal</Text>
+              <Text style={styles.waterPct}>{Math.round(waterProgress * 100)}% of goal</Text>
             </View>
           </TouchableOpacity>
         </View>
 
+        {/* Macros */}
         <View style={styles.macroRow}>
           {[
-            { label: "Protein", value: totals.protein, goal: goalProtein, color: Colors.proteine },
-            { label: "Carbs", value: totals.carbs, goal: goalCarbs, color: Colors.carbohydrates },
-            { label: "Fat", value: totals.fat, goal: goalFat, color: Colors.fats },
+            { label: "PROTEIN", value: totals.protein, goal: goalProtein, color: Colors.proteine },
+            { label: "CARBS",   value: totals.carbs,   goal: goalCarbs,   color: Colors.carbohydrates },
+            { label: "FAT",     value: totals.fat,     goal: goalFat,     color: Colors.fats },
           ].map((m) => {
             const macroProgress = m.goal > 0 ? Math.min(m.value / m.goal, 1) : 0;
             return (
               <View key={m.label} style={[styles.macroCard, { borderTopColor: m.color }]}>
-                <Text style={styles.macroValue}>{Math.round(m.value)}g</Text>
-                <Text style={styles.macroLabel}>{m.label}</Text>
-                {m.goal > 0 && (
-                  <>
-                    <View style={[styles.macroProgressBar, { marginTop: 6 }]}>
-                      <View
-                        style={[
-                          styles.macroProgressFill,
-                          { width: `${macroProgress * 100}%`, backgroundColor: m.color },
-                        ]}
-                      />
-                    </View>
-                    <Text style={[styles.macroGoalText, { color: m.color }]}>
-                      {m.goal}g
-                    </Text>
-                  </>
-                )}
+                <Text style={[styles.macroLabel, { color: m.color }]}>{m.label}</Text>
+                <Text style={styles.macroValue}>{Math.round(m.value)}<Text style={styles.macroUnit}>g</Text></Text>
+                <View style={styles.macroProgressBar}>
+                  <View style={[styles.macroProgressFill, { width: `${macroProgress * 100}%`, backgroundColor: m.color }]} />
+                </View>
+                <Text style={styles.macroGoalText}>/ {m.goal}g</Text>
               </View>
             );
           })}
         </View>
 
+        {/* Meals header */}
+        <View style={styles.mealsHeader}>
+          <Text style={styles.mealsTitle}>Meals</Text>
+          <Text style={styles.viewAll}>View All</Text>
+        </View>
+
+        {/* Meal cards */}
         {MEAL_TYPES.map((type) => {
           const color = MEAL_COLORS[type];
           const entries = meals.filter((m) => m.mealType === type);
           const typeCals = entries.reduce((sum, e) => sum + e.food.calories * e.servings, 0);
-
           return (
-            <View key={type} style={[styles.card, { borderLeftColor: color, borderLeftWidth: 4 }]}>
+            <View key={type} style={[styles.card, styles.mealCard, { borderLeftColor: color }]}>
               <View style={styles.mealHeader}>
                 <Text style={[styles.mealType, { color }]}>{type}</Text>
-                <Text style={styles.mealCals}>{Math.round(typeCals)} kcal</Text>
+                <Text style={styles.mealCals}>
+                  {entries.length === 0 ? "-- kcal" : `${Math.round(typeCals)} kcal`}
+                </Text>
               </View>
+              <View style={styles.mealDivider} />
               {entries.length === 0 ? (
-                <Text style={styles.empty}>No foods logged yet</Text>
+                <TouchableOpacity style={styles.addMealBtn}>
+                  <Ionicons name="add" size={14} color={Colors.textDim} />
+                  <Text style={styles.addMealText}>Add {type}</Text>
+                </TouchableOpacity>
               ) : (
                 entries.map((e) => (
                   <View key={e.id} style={styles.foodRow}>
                     <View style={[styles.foodDot, { backgroundColor: color }]} />
-                    <Text style={styles.foodName}>
-                      {e.food.name.charAt(0).toUpperCase() + e.food.name.slice(1)}
-                    </Text>
+                    <Text style={styles.foodName}>{e.food.name.charAt(0).toUpperCase() + e.food.name.slice(1)}</Text>
                     <Text style={styles.foodCals}>{Math.round(e.food.calories * e.servings)} kcal</Text>
-                    <View style={styles.foodActions}>
-                      <TouchableOpacity onPress={() => openMealEditor(e)} hitSlop={8}>
-                        <Ionicons name="create-outline" size={16} color={Colors.textDim} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDelete(e.id, e.food.name)} hitSlop={8}>
-                        <Ionicons name="trash-outline" size={16} color={Colors.textDim} />
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity onPress={() => openMealEditor(e)} hitSlop={8} style={styles.editIcon}>
+                      <Ionicons name="create-outline" size={15} color={Colors.textDim} />
+                    </TouchableOpacity>
                   </View>
                 ))
               )}
@@ -367,43 +305,24 @@ export default function DashboardScreen() {
         })}
       </ScrollView>
 
-      <Modal
-        visible={waterModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeWaterModal}
-      >
+      {/* Water Modal */}
+      <Modal visible={waterModalVisible} transparent animationType="slide" onRequestClose={closeWaterModal}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeWaterModal}>
           <View style={styles.modalSheet}>
             <View style={styles.handle} />
             <Text style={styles.modalTitle}>Water Log</Text>
             <Text style={styles.modalSub}>{formatDate(selectedDate)}</Text>
-
             <View style={styles.waterInputWrap}>
-              <TextInput
-                style={styles.waterInput}
-                value={draftWaterMl}
-                onChangeText={setDraftWaterMl}
-                keyboardType="numbers-and-punctuation"
-                selectTextOnFocus
-              />
+              <TextInput style={styles.waterInput} value={draftWaterMl} onChangeText={setDraftWaterMl} keyboardType="numbers-and-punctuation" selectTextOnFocus />
               <Text style={styles.waterInputLabel}>ml logged</Text>
             </View>
-
             <View style={styles.adjustmentGrid}>
               {WATER_ADJUSTMENTS.map((amount) => (
-                <TouchableOpacity
-                  key={amount}
-                  style={styles.adjustmentBtn}
-                  onPress={() => adjustDraftWater(amount)}
-                >
-                  <Text style={styles.adjustmentBtnText}>
-                    {amount > 0 ? `+${amount}ml` : `${amount}ml`}
-                  </Text>
+                <TouchableOpacity key={amount} style={styles.adjustmentBtn} onPress={() => adjustDraftWater(amount)}>
+                  <Text style={styles.adjustmentBtnText}>{amount > 0 ? `+${amount}ml` : `${amount}ml`}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmWater}>
               <Text style={styles.confirmBtnText}>Confirm</Text>
             </TouchableOpacity>
@@ -411,38 +330,22 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        visible={!!editingMeal}
-        transparent
-        animationType="slide"
-        onRequestClose={closeMealEditor}
-      >
+      {/* Edit meal modal */}
+      <Modal visible={!!editingMeal} transparent animationType="slide" onRequestClose={closeMealEditor}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeMealEditor}>
           <View style={styles.modalSheet}>
             <View style={styles.handle} />
             <Text style={styles.modalTitle}>Edit Logged Meal</Text>
             <Text style={styles.modalSub}>{editingMeal?.food.name}</Text>
-
             <View style={styles.waterInputWrap}>
-              <TextInput
-                style={styles.waterInput}
-                value={draftMealGrams}
-                onChangeText={setDraftMealGrams}
-                keyboardType="numbers-and-punctuation"
-                selectTextOnFocus
-              />
+              <TextInput style={styles.waterInput} value={draftMealGrams} onChangeText={setDraftMealGrams} keyboardType="numbers-and-punctuation" selectTextOnFocus />
               <Text style={styles.waterInputLabel}>grams</Text>
             </View>
-
             <View style={styles.modalMealGrid}>
               {MEAL_TYPES.map((type) => (
                 <TouchableOpacity
                   key={type}
-                  style={[
-                    styles.modalMealBtn,
-                    { borderColor: MEAL_COLORS[type] },
-                    draftMealType === type && styles.modalMealBtnActive,
-                  ]}
+                  style={[styles.modalMealBtn, { borderColor: MEAL_COLORS[type] }, draftMealType === type && styles.modalMealBtnActive]}
                   onPress={() => setDraftMealType(type)}
                 >
                   <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[type] }]} />
@@ -450,17 +353,16 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
             <View style={styles.editMacroRow}>
               {(() => {
                 const grams = Math.max(0, parseFloat(draftMealGrams) || 0);
                 const servingSize = editingMeal?.food.servingSize ?? 100;
                 const multiplier = grams / servingSize;
                 return [
-                  { label: "Cal", value: Math.round((editingMeal?.food.calories ?? 0) * multiplier), color: Colors.bar },
-                  { label: "Protein", value: `${Math.round((editingMeal?.food.protein ?? 0) * multiplier)}g`, color: Colors.proteine },
-                  { label: "Carbs", value: `${Math.round((editingMeal?.food.carbs ?? 0) * multiplier)}g`, color: Colors.carbohydrates },
-                  { label: "Fat", value: `${Math.round((editingMeal?.food.fat ?? 0) * multiplier)}g`, color: Colors.fats },
+                  { label: "Cal",     value: Math.round((editingMeal?.food.calories ?? 0) * multiplier),          color: Colors.bar },
+                  { label: "Protein", value: `${Math.round((editingMeal?.food.protein ?? 0) * multiplier)}g`,     color: Colors.proteine },
+                  { label: "Carbs",   value: `${Math.round((editingMeal?.food.carbs ?? 0) * multiplier)}g`,       color: Colors.carbohydrates },
+                  { label: "Fat",     value: `${Math.round((editingMeal?.food.fat ?? 0) * multiplier)}g`,         color: Colors.fats },
                 ].map((macro) => (
                   <View key={macro.label} style={[styles.editMacroPill, { borderColor: macro.color }]}>
                     <Text style={[styles.editMacroValue, { color: macro.color }]}>{macro.value}</Text>
@@ -469,11 +371,9 @@ export default function DashboardScreen() {
                 ));
               })()}
             </View>
-
             <TouchableOpacity style={styles.confirmBtn} onPress={handleSaveMealEdit}>
               <Text style={styles.confirmBtnText}>Save Changes</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.cancelBtn} onPress={closeMealEditor}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
@@ -487,8 +387,10 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
-  content: { padding: HORIZONTAL_PAGE_PADDING, paddingBottom: 28 },
-  dayStrip: { paddingBottom: 12 },
+  content: { paddingHorizontal: HORIZONTAL_PAGE_PADDING, paddingTop: 12, paddingBottom: 32 },
+
+  // Day strip
+  dayStrip: { paddingBottom: 14 },
   dayPill: {
     width: DAY_PILL_WIDTH,
     backgroundColor: Colors.secondaryBackground,
@@ -499,202 +401,119 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   dayPillSpaced: { marginRight: DAY_PILL_GAP },
-  dayPillToday: {
-    backgroundColor: "#F4C95D",
-    borderColor: "#FFE08A",
-    borderWidth: 1.5,
-  },
-  dayPillActive: {
-    borderColor: Colors.bar,
-    borderWidth: 2,
-  },
+  dayPillToday: { backgroundColor: Colors.secondaryContainer, borderColor: Colors.todayHighlight, borderWidth: 1.5 },
+  dayPillActive: { borderColor: Colors.bar, borderWidth: 1.5 },
   dayPillWeekday: { color: Colors.textDim, fontSize: 11, fontWeight: "600" },
-  dayPillDay: { color: Colors.white, fontSize: 17, fontWeight: "700", marginTop: 2 },
-  dayPillTodayText: { color: Colors.black },
-  dayPillTextActive: { color: Colors.white },
-  date: { fontSize: 18, fontWeight: "600", marginBottom: 12, color: Colors.text },
+  dayPillDay: { color: Colors.text, fontSize: 17, fontWeight: "700", marginTop: 2 },
+  dayPillTodayText: { color: Colors.onTodayHighlight },
+  dayPillTextActive: { color: Colors.primary },
+
+  date: { fontSize: 22, fontWeight: "700", marginBottom: 14, color: Colors.text },
+
+  // Summary row
+  topSummaryRow: { flexDirection: "row", gap: 12, marginBottom: 12, alignItems: "stretch" },
   card: {
     backgroundColor: Colors.secondaryBackground,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
   },
-  topSummaryRow: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "stretch",
-    marginBottom: 12,
-  },
-  caloriesCard: {
+  caloriesCard: { flex: 1, marginBottom: 0, borderWidth: 1, borderColor: Colors.outlineVariant },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  cardTitle: { fontSize: 13, color: Colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
+  bigNumber: { fontSize: 48, fontWeight: "800", color: Colors.text, letterSpacing: -1, lineHeight: 56 },
+  sub: { color: Colors.textDim, fontSize: 13, marginBottom: 10 },
+  progressBar: { height: 6, backgroundColor: Colors.outlineVariant, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: Colors.bar, borderRadius: 3 },
+  remaining: { marginTop: 8, color: Colors.primary, fontSize: 13, fontWeight: "500" },
+
+  // Water card
+  waterTopCard: {
     flex: 1,
-    marginBottom: 0,
-    borderWidth: 1,
-    borderColor: "#848484",
-  },
-  cardTitle: { fontSize: 14, color: Colors.text, marginBottom: 4 },
-  bigNumber: { fontSize: 48, fontWeight: "bold", color: Colors.text },
-  sub: { color: Colors.textDim, marginBottom: 8 },
-  progressBar: {
-    height: 8,
-    backgroundColor: Colors.rosyGranite,
-    borderRadius: 4,
+    minHeight: 168,
+    backgroundColor: Colors.secondaryBackground,
+    borderRadius: 16,
     overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: Colors.outlineVariant,
+    marginBottom: 0,
   },
-  progressFill: { height: "100%", backgroundColor: Colors.bar, borderRadius: 4 },
-  remaining: { marginTop: 8, color: Colors.textDim },
-  macroRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  waterFillOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: Colors.waterFill },
+  waterCardContent: { padding: 14, flex: 1, zIndex: 1 },
+  waterTitle: { fontSize: 13, color: Colors.textDim, fontWeight: "500", letterSpacing: 0.5 },
+  waterAmount: { fontSize: 40, fontWeight: "800", color: Colors.waterAccent, marginTop: 4, letterSpacing: -1 },
+  waterUnit: { fontSize: 12, color: Colors.waterAccent, fontWeight: "500", marginTop: -2 },
+  waterSub: { color: Colors.textDim, fontSize: 12, marginTop: 6 },
+  waterPct: { color: Colors.waterAccent, fontSize: 11, marginTop: 2, fontWeight: "600" },
+
+  // Macro row
+  macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   macroCard: {
     flex: 1,
     backgroundColor: Colors.secondaryBackground,
     borderRadius: 12,
     padding: 12,
     borderTopWidth: 3,
-    elevation: 2,
   },
-  macroValue: { fontSize: 20, fontWeight: "bold", color: Colors.text },
-  macroLabel: { color: Colors.textDim, fontSize: 12 },
-  macroProgressBar: {
-    height: 4,
-    backgroundColor: Colors.rosyGranite,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
+  macroLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.8, marginBottom: 4 },
+  macroValue: { fontSize: 22, fontWeight: "700", color: Colors.text },
+  macroUnit: { fontSize: 13, fontWeight: "400", color: Colors.textDim },
+  macroProgressBar: { height: 4, backgroundColor: Colors.outlineVariant, borderRadius: 2, overflow: "hidden", marginTop: 8 },
   macroProgressFill: { height: "100%", borderRadius: 2 },
-  macroGoalText: { fontSize: 10, marginTop: 3, fontWeight: "600" },
-  mealHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  mealType: { fontWeight: "600", fontSize: 16, color: Colors.text },
-  mealCals: { color: Colors.textDim },
-  empty: { color: Colors.textDim, fontStyle: "italic" },
-  foodRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6, gap: 8 },
+  macroGoalText: { fontSize: 11, color: Colors.textDim, marginTop: 4 },
+
+  // Meals section
+  mealsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  mealsTitle: { fontSize: 20, fontWeight: "700", color: Colors.text },
+  viewAll: { fontSize: 14, color: Colors.primary, fontWeight: "600" },
+
+  mealCard: { borderLeftWidth: 4, paddingLeft: 12, marginBottom: 10 },
+  mealHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  mealType: { fontSize: 16, fontWeight: "700" },
+  mealCals: { color: Colors.textDim, fontSize: 14 },
+  mealDivider: { height: 1, backgroundColor: Colors.outlineVariant, marginBottom: 8 },
+  addMealBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+  addMealText: { color: Colors.textDim, fontSize: 14 },
+  foodRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, gap: 8 },
   foodDot: { width: 7, height: 7, borderRadius: 4 },
   foodName: { color: Colors.text, flex: 1, fontSize: 14 },
   foodCals: { color: Colors.textDim, fontSize: 13 },
-  foodActions: { flexDirection: "row", alignItems: "center", gap: 12 },
-  waterTopCard: {
-    flex: 1,
-    minHeight: 164,
-    backgroundColor: Colors.secondaryBackground,
-    borderRadius: 12,
-    overflow: "hidden",
-    justifyContent: "center",
-    position: "relative",
-    marginBottom: 0,
-    borderWidth: 1.5,
-    borderColor: "#5999b2",
-  },
-  waterFillOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 225, 255, 0.22)",
-  },
-  waterCardContent: {
-    padding: 14,
-    zIndex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  waterTitle: {
-    color: "#7FDBFF",
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  waterAmount: {
-    color: "#7FDBFF",
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  waterSub: {
-    color: "#BEEFFF",
-    fontSize: 11,
-    marginTop: 4,
-    textAlign: "center",
-  },
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  editIcon: { paddingLeft: 4 },
+
+  // Modals
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
   modalSheet: {
-    backgroundColor: Colors.secondaryBackground,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.cardSurface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 44,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.05)",
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.rosyGranite,
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  modalTitle: { color: Colors.white, fontSize: 20, fontWeight: "700" },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.outlineVariant, alignSelf: "center", marginBottom: 20 },
+  modalTitle: { color: Colors.text, fontSize: 20, fontWeight: "700" },
   modalSub: { color: Colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 18 },
   waterInputWrap: { alignItems: "center", marginBottom: 20 },
-  waterInput: {
-    color: Colors.white,
-    fontSize: 36,
-    fontWeight: "700",
-    textAlign: "center",
-    minWidth: 110,
-  },
+  waterInput: { color: Colors.text, fontSize: 36, fontWeight: "700", textAlign: "center", minWidth: 110 },
   waterInputLabel: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
-  adjustmentGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 16,
-  },
-  adjustmentBtn: {
-    width: "31%",
-    backgroundColor: Colors.tabBackground,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  adjustmentBtnText: {
-    color: Colors.white,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  confirmBtn: {
-    backgroundColor: "#7FDBFF",
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  confirmBtnText: { color: Colors.black, fontSize: 15, fontWeight: "700" },
+  adjustmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
+  adjustmentBtn: { width: "31%", backgroundColor: Colors.secondaryBackground, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  adjustmentBtnText: { color: Colors.text, fontSize: 13, fontWeight: "600" },
+  confirmBtn: { backgroundColor: Colors.primaryContainer, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
+  confirmBtnText: { color: Colors.onPrimary, fontSize: 15, fontWeight: "700" },
   modalMealGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 },
   modalMealBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    width: "47%",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    padding: 14,
-    backgroundColor: Colors.tabBackground,
+    flexDirection: "row", alignItems: "center", gap: 8, width: "47%",
+    borderWidth: 1.5, borderRadius: 12, padding: 14, backgroundColor: Colors.secondaryBackground,
   },
-  modalMealBtnActive: {
-    backgroundColor: Colors.background,
-  },
+  modalMealBtnActive: { backgroundColor: Colors.background },
   mealDot: { width: 10, height: 10, borderRadius: 5 },
-  mealBtnText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
+  mealBtnText: { color: Colors.text, fontSize: 14, fontWeight: "600" },
   editMacroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
-  editMacroPill: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  editMacroValue: { fontSize: 15, fontWeight: "700" },
+  editMacroPill: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 8, alignItems: "center" },
+  editMacroValue: { fontSize: 14, fontWeight: "700" },
   editMacroLabel: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  cancelBtn: { alignItems: "center", paddingTop: 12 },
+  cancelBtn: { alignItems: "center", paddingTop: 14 },
   cancelBtnText: { color: Colors.textDim, fontSize: 15 },
 });
