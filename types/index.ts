@@ -36,6 +36,20 @@ export interface DailyTotals {
   fat: number;
 }
 
+export type StepDataSource = "apple_health";
+
+export interface DailyStepRecord {
+  date: string; // ISO date string e.g. "2026-04-27"
+  stepCount: number;
+  source: StepDataSource;
+  syncedAt: string; // ISO datetime string
+}
+
+export interface StepSyncSettings {
+  appleHealthConnected: boolean;
+  lastSyncedAt?: string;
+}
+
 // User profile and goals
 export interface UserProfile {
   name: string;
@@ -49,6 +63,7 @@ export interface UserProfile {
   goalCarbs: number;
   goalFat: number;
   waterGoalMl: number;
+  stepGoal: number;
 }
 
 export interface ProfileSnapshot {

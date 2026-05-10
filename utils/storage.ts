@@ -1,5 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CustomItem, MealEntry, ProfileSnapshot, UserProfile } from "../types";
+import {
+  CustomItem,
+  DailyStepRecord,
+  MealEntry,
+  ProfileSnapshot,
+  StepSyncSettings,
+  UserProfile,
+} from "../types";
 
 const KEYS = {
   MEALS: "meals",
@@ -8,6 +15,8 @@ const KEYS = {
   PROFILE: "profile",
   PROFILE_HISTORY: "profile_history",
   CUSTOM_ITEMS: "custom_items",
+  STEP_RECORDS: "step_records",
+  STEP_SYNC_SETTINGS: "step_sync_settings",
   THEME: "theme",
 };
 
@@ -127,6 +136,33 @@ export async function deleteCustomItem(id: string): Promise<void> {
   const items = await getCustomItems();
   const filtered = items.filter((item) => item.id !== id);
   await AsyncStorage.setItem(KEYS.CUSTOM_ITEMS, JSON.stringify(filtered));
+}
+
+// --- Step Sync ---
+
+export async function getStepRecords(): Promise<Record<string, DailyStepRecord>> {
+  const raw = await AsyncStorage.getItem(KEYS.STEP_RECORDS);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export async function getStepRecordByDate(date: string): Promise<DailyStepRecord | null> {
+  const records = await getStepRecords();
+  return records[date] ?? null;
+}
+
+export async function saveStepRecord(record: DailyStepRecord): Promise<void> {
+  const records = await getStepRecords();
+  records[record.date] = record;
+  await AsyncStorage.setItem(KEYS.STEP_RECORDS, JSON.stringify(records));
+}
+
+export async function getStepSyncSettings(): Promise<StepSyncSettings> {
+  const raw = await AsyncStorage.getItem(KEYS.STEP_SYNC_SETTINGS);
+  return raw ? JSON.parse(raw) : { appleHealthConnected: false };
+}
+
+export async function saveStepSyncSettings(settings: StepSyncSettings): Promise<void> {
+  await AsyncStorage.setItem(KEYS.STEP_SYNC_SETTINGS, JSON.stringify(settings));
 }
 
 // --- Theme ---

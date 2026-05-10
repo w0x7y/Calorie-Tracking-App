@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +11,8 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { calculateBMR } from "../utils/nutrition";
-import { getProfile, saveProfile } from "../utils/storage";
+import { connectAppleHealth, isAppleHealthSupported } from "../utils/health";
+import { getProfile, getStepSyncSettings, saveProfile, saveStepSyncSettings } from "../utils/storage";
 import { UserProfile, ThemeType } from "../types";
 import { useTheme } from "../style/ThemeContext";
 import { Themes } from "../style/themes";
@@ -38,6 +40,7 @@ const DEFAULT_PROFILE: UserProfile = {
   goalCarbs: 280,
   goalFat: 70,
   waterGoalMl: 2000,
+  stepGoal: 8000,
 };
 
 function parseNumber(value: string, fallback: number): number {
@@ -72,24 +75,35 @@ export default function ProfileScreen() {
   const [goalCarbs, setGoalCarbs] = useState(String(DEFAULT_PROFILE.goalCarbs));
   const [goalFat, setGoalFat] = useState(String(DEFAULT_PROFILE.goalFat));
   const [waterGoalMl, setWaterGoalMl] = useState(String(DEFAULT_PROFILE.waterGoalMl));
+  const [stepGoal, setStepGoal] = useState(String(DEFAULT_PROFILE.stepGoal));
+  const [appleHealthConnected, setAppleHealthConnected] = useState(false);
+  const [lastStepSyncedAt, setLastStepSyncedAt] = useState<string | null>(null);
+  const [isConnectingAppleHealth, setIsConnectingAppleHealth] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
 
-      getProfile().then((profile) => {
-        if (!active || !profile) return;
-        setName(profile.name ?? DEFAULT_PROFILE.name);
-        setAge(String(profile.age ?? DEFAULT_PROFILE.age));
-        setWeightKg(String(profile.weightKg ?? DEFAULT_PROFILE.weightKg));
-        setHeightCm(String(profile.heightCm ?? DEFAULT_PROFILE.heightCm));
-        setGender(profile.gender ?? DEFAULT_PROFILE.gender);
-        setActivityLevel(profile.activityLevel ?? DEFAULT_PROFILE.activityLevel);
-        setGoalCalories(String(profile.goalCalories ?? DEFAULT_PROFILE.goalCalories));
-        setGoalProtein(String(profile.goalProtein ?? DEFAULT_PROFILE.goalProtein));
-        setGoalCarbs(String(profile.goalCarbs ?? DEFAULT_PROFILE.goalCarbs));
-        setGoalFat(String(profile.goalFat ?? DEFAULT_PROFILE.goalFat));
-        setWaterGoalMl(String(profile.waterGoalMl ?? DEFAULT_PROFILE.waterGoalMl));
+      Promise.all([getProfile(), getStepSyncSettings()]).then(([profile, stepSyncSettings]) => {
+        if (!active) return;
+
+        if (profile) {
+          setName(profile.name ?? DEFAULT_PROFILE.name);
+          setAge(String(profile.age ?? DEFAULT_PROFILE.age));
+          setWeightKg(String(profile.weightKg ?? DEFAULT_PROFILE.weightKg));
+          setHeightCm(String(profile.heightCm ?? DEFAULT_PROFILE.heightCm));
+          setGender(profile.gender ?? DEFAULT_PROFILE.gender);
+          setActivityLevel(profile.activityLevel ?? DEFAULT_PROFILE.activityLevel);
+          setGoalCalories(String(profile.goalCalories ?? DEFAULT_PROFILE.goalCalories));
+          setGoalProtein(String(profile.goalProtein ?? DEFAULT_PROFILE.goalProtein));
+          setGoalCarbs(String(profile.goalCarbs ?? DEFAULT_PROFILE.goalCarbs));
+          setGoalFat(String(profile.goalFat ?? DEFAULT_PROFILE.goalFat));
+          setWaterGoalMl(String(profile.waterGoalMl ?? DEFAULT_PROFILE.waterGoalMl));
+          setStepGoal(String(profile.stepGoal ?? DEFAULT_PROFILE.stepGoal));
+        }
+
+        setAppleHealthConnected(stepSyncSettings.appleHealthConnected);
+        setLastStepSyncedAt(stepSyncSettings.lastSyncedAt ?? null);
       });
 
       return () => {
@@ -134,6 +148,7 @@ export default function ProfileScreen() {
     const parsedGoalCarbs = parseNumber(goalCarbs, stats.recommendedMacros.goalCarbs);
     const parsedGoalFat = parseNumber(goalFat, stats.recommendedMacros.goalFat);
     const parsedWaterGoalMl = parseNumber(waterGoalMl, DEFAULT_PROFILE.waterGoalMl);
+    const parsedStepGoal = parseNumber(stepGoal, DEFAULT_PROFILE.stepGoal);
 
     const profile: UserProfile = {
       name: name.trim(),
@@ -147,11 +162,43 @@ export default function ProfileScreen() {
       goalCarbs: parsedGoalCarbs,
       goalFat: parsedGoalFat,
       waterGoalMl: parsedWaterGoalMl,
+      stepGoal: parsedStepGoal,
     };
 
     await saveProfile(profile);
     Alert.alert("Saved", "Your profile and daily goals were updated.");
   }
+
+  async function handleConnectAppleHealth() {
+    if (!isAppleHealthSupported()) {
+      Alert.alert(
+        "Apple Health",
+        Platform.OS === "ios"
+          ? "Apple Health requires a native iPhone build. Expo Go cannot access HealthKit."
+          : "Apple Health step sync is only available on iPhone.",
+      );
+      return;
+    }
+
+    setIsConnectingAppleHealth(true);
+    const result = await connectAppleHealth();
+    setIsConnectingAppleHealth(false);
+
+    if (!result.connected) {
+      Alert.alert("Apple Health", result.message);
+      return;
+    }
+
+    await saveStepSyncSettings({
+      appleHealthConnected: true,
+    });
+    setAppleHealthConnected(true);
+    Alert.alert("Connected", "Apple Health step access is enabled.");
+  }
+
+  const appleHealthStatusText = appleHealthConnected
+    ? `Connected${lastStepSyncedAt ? ` - last sync ${new Date(lastStepSyncedAt).toLocaleString()}` : ""}`
+    : "Not connected";
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -302,6 +349,18 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={styles.field}>
+          <Text style={styles.label}>Daily step goal</Text>
+          <TextInput
+            style={styles.input}
+            value={stepGoal}
+            onChangeText={setStepGoal}
+            keyboardType="numbers-and-punctuation"
+            placeholder={String(DEFAULT_PROFILE.stepGoal)}
+            placeholderTextColor={colors.textDim}
+          />
+        </View>
+
         {/* Macros */}
         <Text style={styles.macrosSectionLabel}>Macros</Text>
         <View style={styles.macrosRow}>
@@ -344,6 +403,44 @@ export default function ProfileScreen() {
             />
             <Text style={styles.macroInputUnit}>g</Text>
           </View>
+        </View>
+
+        <View style={styles.integrationCard}>
+          <View style={styles.integrationHeader}>
+            <View>
+              <Text style={styles.integrationTitle}>Apple Health</Text>
+              <Text style={styles.integrationSubtitle}>
+                {Platform.OS === "ios"
+                  ? "Read your daily step count from Apple Health."
+                  : "Apple Health step sync appears on iPhone builds only."}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.integrationBadge,
+                appleHealthConnected && styles.integrationBadgeActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.integrationBadgeText,
+                  appleHealthConnected && styles.integrationBadgeTextActive,
+                ]}
+              >
+                {appleHealthConnected ? "Connected" : "Inactive"}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.integrationStatus}>{appleHealthStatusText}</Text>
+          <TouchableOpacity style={styles.integrationButton} onPress={handleConnectAppleHealth}>
+            <Text style={styles.integrationButtonText}>
+              {isConnectingAppleHealth
+                ? "Connecting..."
+                : appleHealthConnected
+                  ? "Reconnect Apple Health"
+                  : "Connect Apple Health"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -608,6 +705,67 @@ const createStyles = (colors: any) => StyleSheet.create({
   saveButtonText: {
     color: colors.onPrimary,
     fontSize: 15,
+    fontWeight: "700",
+  },
+  integrationCard: {
+    marginTop: 2,
+    backgroundColor: colors.tabBackground,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  integrationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  integrationTitle: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  integrationSubtitle: {
+    color: colors.textDim,
+    fontSize: 12,
+    marginTop: 3,
+    maxWidth: 220,
+  },
+  integrationBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.secondaryBackground,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  integrationBadgeActive: {
+    backgroundColor: colors.tertiaryContainer,
+  },
+  integrationBadgeText: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  integrationBadgeTextActive: {
+    color: colors.background,
+  },
+  integrationStatus: {
+    color: colors.text,
+    fontSize: 13,
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  integrationButton: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  integrationButtonText: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: "700",
   },
   themeGrid: {

@@ -16,10 +16,15 @@ import {
   deleteMeal,
   getMealsByDate,
   getProfile,
+  getStepRecordByDate,
+  getStepSyncSettings,
   getWaterByDate,
+  saveStepRecord,
+  saveStepSyncSettings,
   setWaterByDate,
   updateMeal,
 } from "../utils/storage";
+import { getAppleHealthStepCountForDate, isAppleHealthSupported } from "../utils/health";
 import { calculateTotals, formatDate, todayISO } from "../utils/nutrition";
 import { DailyTotals, MealEntry } from "../types";
 import { useTheme } from "../style/ThemeContext";
@@ -27,6 +32,7 @@ import { useTheme } from "../style/ThemeContext";
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 const DEFAULT_GOAL_CALORIES = 2000;
 const DEFAULT_WATER_GOAL_ML = 2500;
+const DEFAULT_STEP_GOAL = 8000;
 const DAY_PILL_WIDTH = 58;
 const DAY_PILL_GAP = 8;
 const DAY_PILL_FULL_WIDTH = DAY_PILL_WIDTH + DAY_PILL_GAP;
@@ -74,6 +80,12 @@ export default function DashboardScreen() {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [waterMl, setWaterMl] = useState(0);
   const [waterGoalMl, setWaterGoalMl] = useState(DEFAULT_WATER_GOAL_ML);
+  const [stepCount, setStepCount] = useState(0);
+  const [stepGoal, setStepGoal] = useState(DEFAULT_STEP_GOAL);
+  const [appleHealthConnected, setAppleHealthConnected] = useState(false);
+  const [lastStepSyncedAt, setLastStepSyncedAt] = useState<string | null>(null);
+  const [stepMessage, setStepMessage] = useState<string>("");
+  const [isSyncingSteps, setIsSyncingSteps] = useState(false);
   const [waterModalVisible, setWaterModalVisible] = useState(false);
   const [draftWaterMl, setDraftWaterMl] = useState("100");
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
@@ -104,8 +116,63 @@ export default function DashboardScreen() {
     recenterTimeoutRef.current = setTimeout(() => centerToday(true), 5000);
   }
 
+  async function syncSteps(date: string, shouldSync: boolean) {
+    const [settings, cachedRecord] = await Promise.all([
+      getStepSyncSettings(),
+      getStepRecordByDate(date),
+    ]);
+
+    setAppleHealthConnected(settings.appleHealthConnected);
+    setStepCount(cachedRecord?.stepCount ?? 0);
+    setLastStepSyncedAt(cachedRecord?.syncedAt ?? settings.lastSyncedAt ?? null);
+    setStepMessage(
+      settings.appleHealthConnected
+        ? cachedRecord
+          ? "Apple Health"
+          : "Waiting for first sync"
+        : isAppleHealthSupported()
+          ? "Connect Apple Health in Profile"
+          : "Apple Health sync is only available on iPhone",
+    );
+
+    if (!shouldSync) {
+      return;
+    }
+
+    setIsSyncingSteps(true);
+    const result = await getAppleHealthStepCountForDate(date);
+    setIsSyncingSteps(false);
+
+    if (!result.success) {
+      setStepMessage(result.message);
+      return;
+    }
+
+    const nextRecord = {
+      date,
+      stepCount: result.steps,
+      source: "apple_health" as const,
+      syncedAt: result.syncedAt,
+    };
+    await saveStepRecord(nextRecord);
+    await saveStepSyncSettings({
+      appleHealthConnected: true,
+      lastSyncedAt: result.syncedAt,
+    });
+    setAppleHealthConnected(true);
+    setStepCount(result.steps);
+    setLastStepSyncedAt(result.syncedAt);
+    setStepMessage("Apple Health");
+  }
+
   function reload(date: string = selectedDate) {
-    Promise.all([getMealsByDate(date), getProfile(), getWaterByDate(date)]).then(([data, profile, water]) => {
+    Promise.all([
+      getMealsByDate(date),
+      getProfile(),
+      getWaterByDate(date),
+      getStepSyncSettings(),
+      getStepRecordByDate(date),
+    ]).then(async ([data, profile, water, stepSyncSettings, cachedStepRecord]) => {
       setMeals(data);
       setTotals(calculateTotals(data));
       setGoalCalories(profile?.goalCalories || DEFAULT_GOAL_CALORIES);
@@ -113,7 +180,24 @@ export default function DashboardScreen() {
       setGoalCarbs(profile?.goalCarbs || 0);
       setGoalFat(profile?.goalFat || 0);
       setWaterGoalMl(profile?.waterGoalMl || DEFAULT_WATER_GOAL_ML);
+      setStepGoal(profile?.stepGoal || DEFAULT_STEP_GOAL);
       setWaterMl(water);
+      setAppleHealthConnected(stepSyncSettings.appleHealthConnected);
+      setStepCount(cachedStepRecord?.stepCount ?? 0);
+      setLastStepSyncedAt(cachedStepRecord?.syncedAt ?? stepSyncSettings.lastSyncedAt ?? null);
+      setStepMessage(
+        stepSyncSettings.appleHealthConnected
+          ? cachedStepRecord
+            ? "Apple Health"
+            : "Waiting for first sync"
+          : isAppleHealthSupported()
+            ? "Connect Apple Health in Profile"
+            : "Apple Health sync is only available on iPhone"
+      );
+
+      if (stepSyncSettings.appleHealthConnected && isAppleHealthSupported()) {
+        await syncSteps(date, true);
+      }
     });
   }
 
@@ -170,8 +254,15 @@ export default function DashboardScreen() {
   const remaining = goalCalories - totals.calories;
   const progress = goalCalories > 0 ? Math.min(totals.calories / goalCalories, 1) : 0;
   const waterProgress = waterGoalMl > 0 ? Math.min(waterMl / waterGoalMl, 1) : 0;
+  const stepProgress = stepGoal > 0 ? Math.min(stepCount / stepGoal, 1) : 0;
   const waterLitres = (waterMl / 1000).toFixed(1);
   const waterGoalLitres = (waterGoalMl / 1000).toFixed(1);
+  const formattedStepSync = lastStepSyncedAt
+    ? new Date(lastStepSyncedAt).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <View style={styles.container}>
@@ -243,6 +334,44 @@ export default function DashboardScreen() {
               <Text style={styles.waterPct}>{Math.round(waterProgress * 100)}% of goal</Text>
             </View>
           </TouchableOpacity>
+        </View>
+
+        <View style={[styles.card, styles.stepsCard]}>
+          <View style={styles.stepsHeader}>
+            <View>
+              <Text style={styles.cardTitle}>Steps</Text>
+              <Text style={styles.stepsSourceText}>
+                {stepMessage}
+                {formattedStepSync && stepMessage === "Apple Health" ? ` - ${formattedStepSync}` : ""}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.stepsSyncButton,
+                (!appleHealthConnected || isSyncingSteps) && styles.stepsSyncButtonDisabled,
+              ]}
+              onPress={() => syncSteps(selectedDate, appleHealthConnected && isAppleHealthSupported())}
+              disabled={!appleHealthConnected || isSyncingSteps}
+            >
+              <Text style={styles.stepsSyncButtonText}>
+                {isSyncingSteps ? "Syncing..." : "Sync"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.stepsValueRow}>
+            <Text style={styles.stepsBigNumber}>{stepCount.toLocaleString()}</Text>
+            <Text style={styles.stepsGoalText}>/ {stepGoal.toLocaleString()} goal</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.stepsProgressFill, { width: `${stepProgress * 100}%` }]} />
+          </View>
+          <Text style={styles.stepsRemainingText}>
+            {stepGoal <= 0
+              ? "Set a step goal in Profile"
+              : stepCount >= stepGoal
+                ? "Step goal reached!"
+                : `${(stepGoal - stepCount).toLocaleString()} steps to go`}
+          </Text>
         </View>
 
         {/* Macros */}
@@ -448,6 +577,67 @@ const createStyles = (colors: any) => StyleSheet.create({
   waterUnit: { fontSize: 12, color: colors.waterAccent, fontWeight: "500", marginTop: -2 },
   waterSub: { color: colors.textDim, fontSize: 12, marginTop: 6 },
   waterPct: { color: colors.waterAccent, fontSize: 11, marginTop: 2, fontWeight: "600" },
+  stepsCard: {
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    marginBottom: 16,
+  },
+  stepsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+  },
+  stepsSourceText: {
+    color: colors.textDim,
+    fontSize: 12,
+    marginTop: 3,
+  },
+  stepsSyncButton: {
+    backgroundColor: colors.tabBackground,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  stepsSyncButtonDisabled: {
+    opacity: 0.45,
+  },
+  stepsSyncButtonText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  stepsValueRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  stepsBigNumber: {
+    color: colors.text,
+    fontSize: 40,
+    fontWeight: "800",
+    letterSpacing: -1,
+    lineHeight: 44,
+  },
+  stepsGoalText: {
+    color: colors.textDim,
+    fontSize: 14,
+    paddingBottom: 4,
+  },
+  stepsProgressFill: {
+    height: "100%",
+    backgroundColor: colors.tertiary,
+    borderRadius: 3,
+  },
+  stepsRemainingText: {
+    marginTop: 8,
+    color: colors.tertiary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
 
   // Macro row
   macroRow: { flexDirection: "row", gap: 8, marginBottom: 20 },

@@ -37,6 +37,13 @@
         {
           "cameraPermission": "Allow Calorie Tracker to access your camera to scan product barcodes."
         }
+      ],
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Allow Calorie Tracker to read your daily step count from Apple Health.",
+          "healthUpdatePermission": "Allow Calorie Tracker to write health data when you enable future Apple Health features."
+        }
       ]
     ],
     "extra": {
