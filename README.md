@@ -43,6 +43,7 @@ It is a lightweight tracker with a dark, focused UI rather than a bloated nutrit
 - calorie progress card with goal tracking
 - macro summary for protein, carbs, and fat
 - water tracker with quick editing
+- step goal card with Apple Health sync on iPhone native builds
 - meal sections split into `Breakfast`, `Lunch`, `Dinner`, and `Snacks`
 - date strip for reviewing nearby days
 
@@ -73,6 +74,7 @@ It is a lightweight tracker with a dark, focused UI rather than a bloated nutrit
 - estimate maintenance calories
 - auto-fill suggested macro targets
 - set a daily water goal
+- set a daily step goal and connect Apple Health on iPhone
 
 ## Built With
 
@@ -112,7 +114,7 @@ It is a lightweight tracker with a dark, focused UI rather than a bloated nutrit
 
 - Node.js 18 or newer recommended
 - npm
-- Expo Go or an Android/iOS simulator
+- Expo development build or an Android/iOS simulator
 
 ### Install
 
@@ -125,6 +127,12 @@ Then add your CalorieNinjas API key to `.env`:
 
 ```bash
 EXPO_PUBLIC_CALORIE_NINJAS_API_KEY=your_api_key_here
+```
+
+Optional production proxy:
+
+```bash
+EXPO_PUBLIC_FOOD_API_BASE_URL=https://your-api.example.com
 ```
 
 ### Run
@@ -160,11 +168,32 @@ There is no backend or authentication layer in the current codebase, so the app 
 
 Food search is powered by [`utils/api.ts`](./utils/api.ts) and currently uses the CalorieNinjas API.
 
-The app reads the key from:
+For local development, the app reads the key from:
 
 - `EXPO_PUBLIC_CALORIE_NINJAS_API_KEY`
 
+For production, prefer routing food search through your own backend proxy:
+
+- `EXPO_PUBLIC_FOOD_API_BASE_URL`
+
+When `EXPO_PUBLIC_FOOD_API_BASE_URL` is set, the app sends food search requests to:
+
+- `GET /nutrition?query=<search text>`
+
+This keeps the real third-party API key off the client app bundle.
+
 Use `.env.example` as the starter template for local setup.
+
+## Apple Health
+
+- Apple Health step sync requires a native iPhone build
+- it does not work in Expo Go
+- the app reads step data through HealthKit after the user grants permission
+
+## Release Prep
+
+- EAS build config lives in [`eas.json`](./eas.json)
+- release tasks are documented in [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
 
 ## Scripts
 

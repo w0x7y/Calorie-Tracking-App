@@ -4,6 +4,7 @@ import { mapApiToFood } from "./nutrition";
 const BASE = "https://api.calorieninjas.com/v1/nutrition";
 const OPEN_FOOD_FACTS_BASE = "https://world.openfoodfacts.net/api/v2/product";
 const API_KEY = process.env.EXPO_PUBLIC_CALORIE_NINJAS_API_KEY;
+const FOOD_API_BASE_URL = process.env.EXPO_PUBLIC_FOOD_API_BASE_URL?.replace(/\/+$/, "");
 
 const SEARCH_VARIANTS: Record<string, string[]> = {
   rice: ["white rice", "brown rice", "basmati rice", "jasmine rice", "wild rice"],
@@ -53,10 +54,48 @@ export interface BarcodeLookupResult {
   food: Food;
 }
 
-export async function getNutrition(query: string): Promise<Food[]> {
-  if (!query) return [];
+function getErrorMessage(errorText: string, fallbackMessage: string): string {
+  const trimmed = errorText.trim();
+  if (!trimmed) return fallbackMessage;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed?.error === "string" && parsed.error.trim()) {
+      return parsed.error.trim();
+    }
+    if (typeof parsed?.message === "string" && parsed.message.trim()) {
+      return parsed.message.trim();
+    }
+  } catch {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+async function fetchNutritionFromProxy(query: string): Promise<Food[]> {
+  if (!FOOD_API_BASE_URL) return [];
+
+  const res = await fetch(
+    `${FOOD_API_BASE_URL}/nutrition?query=${encodeURIComponent(query)}`,
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(
+      getErrorMessage(errorText, `Food API proxy error ${res.status}`),
+    );
+  }
+
+  const data = await res.json();
+  return (data.items ?? []).map(mapApiToFood);
+}
+
+async function fetchNutritionDirect(query: string): Promise<Food[]> {
   if (!API_KEY) {
-    throw new Error("Missing EXPO_PUBLIC_CALORIE_NINJAS_API_KEY. Add it to your environment config.");
+    throw new Error(
+      "Missing nutrition API configuration. Set EXPO_PUBLIC_FOOD_API_BASE_URL for production or EXPO_PUBLIC_CALORIE_NINJAS_API_KEY for local development.",
+    );
   }
 
   const res = await fetch(`${BASE}?query=${encodeURIComponent(query)}`, {
@@ -67,11 +106,21 @@ export async function getNutrition(query: string): Promise<Food[]> {
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(errorText || `API error ${res.status}`);
+    throw new Error(getErrorMessage(errorText, `API error ${res.status}`));
   }
 
   const data = await res.json();
   return (data.items ?? []).map(mapApiToFood);
+}
+
+export async function getNutrition(query: string): Promise<Food[]> {
+  if (!query) return [];
+
+  if (FOOD_API_BASE_URL) {
+    return await fetchNutritionFromProxy(query);
+  }
+
+  return await fetchNutritionDirect(query);
 }
 
 export async function searchFoods(query: string): Promise<Food[]> {

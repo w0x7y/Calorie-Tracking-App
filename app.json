@@ -2,7 +2,11 @@
   "expo": {
     "name": "calorie-tracker",
     "slug": "calorie-tracking-app",
+    "scheme": "calorie-tracking-app",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,14 +17,14 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.w0x7y.calorietrackingapp",
+      "buildNumber": "1",
       "supportsTablet": true,
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
-      }
+      "infoPlist": {}
     },
     "android": {
+      "package": "com.w0x7y.calorietrackingapp",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -30,6 +34,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
     },
     "plugins": [
       [
