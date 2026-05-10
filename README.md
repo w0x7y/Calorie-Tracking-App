@@ -194,6 +194,7 @@ Use `.env.example` as the starter template for local setup.
 
 - EAS build config lives in [`eas.json`](./eas.json)
 - release tasks are documented in [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+- Cloudflare Worker proxy scaffold lives in [`food-api-proxy`](./food-api-proxy)
 
 ## Scripts
 

@@ -73,3 +73,5 @@
   - rate-limit requests
   - log failures
   - return only the fields your app needs
+- Current repo scaffold:
+  - Cloudflare Worker proxy in [`food-api-proxy`](/C:/Users/idang/CodeCody/App/Calorie-Tracking-App/food-api-proxy)
