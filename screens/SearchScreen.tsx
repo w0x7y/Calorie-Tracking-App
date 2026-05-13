@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   Keyboard,
+  Animated,
 } from "react-native";
 import { searchFoods } from "../utils/api";
 import { addMeal } from "../utils/storage";
@@ -35,7 +36,11 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [grams, setGrams] = useState("100");
-  const visibleResults = results.slice(0, 5);
+
+  // Animation refs for search results
+  const resultAnims = useRef<{ opacity: Animated.Value; translateY: Animated.Value }[]>([]).current;
+  const resultScales = useRef<Animated.Value[]>([]).current;
+  const visibleResults = useMemo(() => results.slice(0, 5), [results]);
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -43,7 +48,24 @@ export default function SearchScreen() {
     setLoading(true);
     try {
       const foods = await searchFoods(query);
+      resultAnims.length = 0;
+      resultScales.length = 0;
+      foods.slice(0, 5).forEach(() => {
+        resultAnims.push({ opacity: new Animated.Value(0), translateY: new Animated.Value(15) });
+        resultScales.push(new Animated.Value(1));
+      });
       setResults(foods);
+      setTimeout(() => {
+        Animated.stagger(
+          70,
+          resultAnims.map((anim) =>
+            Animated.parallel([
+              Animated.timing(anim.opacity, { toValue: 1, duration: 240, useNativeDriver: true }),
+              Animated.spring(anim.translateY, { toValue: 0, useNativeDriver: true, damping: 18, stiffness: 150 }),
+            ])
+          )
+        ).start();
+      }, 0);
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not fetch results.");
     } finally {
@@ -97,26 +119,34 @@ export default function SearchScreen() {
         data={visibleResults}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.resultCard}
-            onPress={() => { setSelectedFood(item); setGrams("100"); }}
-          >
-            <View style={styles.resultLeft}>
-              <Text style={styles.foodName}>
-                {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
-              </Text>
-              {item.brand && <Text style={styles.brand}>{item.brand}</Text>}
-              <Text style={styles.serving}>
-                {item.servingSize} {item.servingUnit}
-              </Text>
-            </View>
-            <View style={styles.resultRight}>
-              <Text style={styles.calories}>{item.calories}</Text>
-              <Text style={styles.kcal}>kcal</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item, index }) => {
+          const anim = resultAnims[index] ?? { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+          const scale = resultScales[index] ?? new Animated.Value(1);
+          return (
+            <TouchableOpacity
+              activeOpacity={1}
+              onPressIn={() => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, damping: 15, stiffness: 300 }).start()}
+              onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 200 }).start()}
+              onPress={() => { setSelectedFood(item); setGrams("100"); }}
+            >
+              <Animated.View style={[styles.resultCard, { opacity: anim.opacity, transform: [{ translateY: anim.translateY }, { scale }] }]}>
+                <View style={styles.resultLeft}>
+                  <Text style={styles.foodName}>
+                    {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
+                  </Text>
+                  {item.brand && <Text style={styles.brand}>{item.brand}</Text>}
+                  <Text style={styles.serving}>
+                    {item.servingSize} {item.servingUnit}
+                  </Text>
+                </View>
+                <View style={styles.resultRight}>
+                  <Text style={styles.calories}>{item.calories}</Text>
+                  <Text style={styles.kcal}>kcal</Text>
+                </View>
+              </Animated.View>
+            </TouchableOpacity>
+          );
+        }}
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.hint}>Search for a food to get started</Text>

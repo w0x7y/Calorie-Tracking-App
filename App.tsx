@@ -30,11 +30,7 @@ function Navigation() {
               Profile: focused ? "person" : "person-outline",
             };
             return (
-              <Ionicons
-                name={icons[route.name] as any}
-                size={size}
-                color={color}
-              />
+              <Ionicons name={icons[route.name] as any} size={size} color={color} />
             );
           },
           tabBarStyle: {

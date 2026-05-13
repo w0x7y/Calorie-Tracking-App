@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Keyboard,
   Modal,
   ScrollView,
@@ -95,6 +96,16 @@ export default function LogScreen() {
   }), [colors]);
 
   const [mode, setMode] = useState<LogMode>("saved");
+
+  // Animation refs
+  const TAB_KEYS: LogMode[] = ["saved", "food", "recipe"];
+  const tabIndicatorX = useRef(new Animated.Value(0)).current;
+  const savedCardAnims = useRef<{ opacity: Animated.Value; translateY: Animated.Value }[]>([]).current;
+
+  function animateTabTo(key: LogMode) {
+    const idx = TAB_KEYS.indexOf(key);
+    Animated.spring(tabIndicatorX, { toValue: idx, useNativeDriver: true, damping: 18, stiffness: 200 }).start();
+  }
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
   const [savedSearch, setSavedSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<CustomItem | null>(null);
@@ -125,7 +136,7 @@ export default function LogScreen() {
   const [recipeSearchLoading, setRecipeSearchLoading] = useState(false);
 
   function reload() {
-    getCustomItems().then(setCustomItems);
+    getCustomItems().then((items) => { setCustomItems(items); });
   }
 
   useFocusEffect(
@@ -139,14 +150,33 @@ export default function LogScreen() {
     [customItems],
   );
 
+  const logBtnScales = useRef<Animated.Value[]>([]).current;
+
   const filteredSavedItems = useMemo(() => {
     const q = savedSearch.trim().toLowerCase();
-    if (!q) return savedItems;
-    return savedItems.filter(
+    const filtered = !q ? savedItems : savedItems.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
         (item.brand ?? "").toLowerCase().includes(q),
     );
+    savedCardAnims.length = 0;
+    logBtnScales.length = 0;
+    filtered.forEach(() => {
+      savedCardAnims.push({ opacity: new Animated.Value(0), translateY: new Animated.Value(16) });
+      logBtnScales.push(new Animated.Value(1));
+    });
+    setTimeout(() => {
+      Animated.stagger(
+        60,
+        savedCardAnims.map((anim) =>
+          Animated.parallel([
+            Animated.timing(anim.opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.spring(anim.translateY, { toValue: 0, useNativeDriver: true, damping: 18, stiffness: 150 }),
+          ])
+        )
+      ).start();
+    }, 0);
+    return filtered;
   }, [savedItems, savedSearch]);
 
   const recipeBaseItems = useMemo(
@@ -574,19 +604,16 @@ export default function LogScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.modeRow}>
-        {[
-          { key: "saved", label: "Saved" },
-          { key: "food", label: "Food/Product" },
-          { key: "recipe", label: "Recipe" },
-        ].map((item) => (
+        {([{ key: "saved", label: "Saved" }, { key: "food", label: "Food/Product" }, { key: "recipe", label: "Recipe" }] as const).map((item) => (
           <TouchableOpacity
             key={item.key}
             style={[styles.modeButton, mode === item.key && styles.modeButtonActive]}
             onPress={() => {
+              animateTabTo(item.key);
               if (item.key === "saved") {
                 stopEditing();
               } else {
-                setMode(item.key as LogMode);
+                setMode(item.key);
                 if (item.key !== "food" && isEditingFood) resetFoodForm();
                 if (item.key !== "recipe" && isEditingRecipe) resetRecipeForm();
                 if (item.key !== mode) setEditingItem(null);
@@ -629,54 +656,61 @@ export default function LogScreen() {
             ) : filteredSavedItems.length === 0 ? (
               <Text style={styles.emptyText}>No items match "{savedSearch}".</Text>
             ) : (
-              filteredSavedItems.map((item) => (
-                <View key={item.id} style={styles.savedCard}>
-                  <View style={styles.savedHeader}>
-                    <View style={styles.savedTitleWrap}>
-                      <View style={styles.savedTitleRow}>
-                        <Text style={styles.savedName}>{item.name}</Text>
-                        {item.barcode && (
-                          <View style={styles.barcodeBadge}>
-                            <Ionicons name="barcode-outline" size={12} color={colors.black} />
-                            <Text style={styles.barcodeBadgeText}>Scanned</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.savedMeta}>
-                        {item.kind === "recipe" ? "Recipe" : item.kind === "product" ? "Product" : "Food"}
-                        {" • "}
-                        {Math.round(item.food.calories)} kcal / 100g
-                      </Text>
-                      {item.food.packageServingSize && item.food.packageServingUnit && (
-                        <Text style={styles.savedServing}>
-                          1 serving ({item.food.packageServingSize}
-                          {item.food.packageServingUnit}): {Math.round(item.food.calories * (item.food.packageServingSize / item.food.servingSize))} kcal
+              filteredSavedItems.map((item, cardIdx) => {
+                const cardAnim = savedCardAnims[cardIdx] ?? { opacity: new Animated.Value(1), translateY: new Animated.Value(0) };
+                const logBtnScale = logBtnScales[cardIdx] ?? new Animated.Value(1);
+                return (
+                  <Animated.View key={item.id} style={[styles.savedCard, { opacity: cardAnim.opacity, transform: [{ translateY: cardAnim.translateY }] }]}>
+                    <View style={styles.savedHeader}>
+                      <View style={styles.savedTitleWrap}>
+                        <View style={styles.savedTitleRow}>
+                          <Text style={styles.savedName}>{item.name}</Text>
+                          {item.barcode && (
+                            <View style={styles.barcodeBadge}>
+                              <Ionicons name="barcode-outline" size={12} color={colors.black} />
+                              <Text style={styles.barcodeBadgeText}>Scanned</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.savedMeta}>
+                          {item.kind === "recipe" ? "Recipe" : item.kind === "product" ? "Product" : "Food"}
+                          {" • "}
+                          {Math.round(item.food.calories)} kcal / 100g
                         </Text>
-                      )}
-                      {item.barcode && <Text style={styles.savedBarcode}>Barcode: {item.barcode}</Text>}
-                      <Text style={styles.savedMacros}>{formatMacros(item.food)}</Text>
+                        {item.food.packageServingSize && item.food.packageServingUnit && (
+                          <Text style={styles.savedServing}>
+                            1 serving ({item.food.packageServingSize}
+                            {item.food.packageServingUnit}): {Math.round(item.food.calories * (item.food.packageServingSize / item.food.servingSize))} kcal
+                          </Text>
+                        )}
+                        {item.barcode && <Text style={styles.savedBarcode}>Barcode: {item.barcode}</Text>}
+                        <Text style={styles.savedMacros}>{formatMacros(item.food)}</Text>
+                      </View>
+                      <View style={styles.savedActions}>
+                        <TouchableOpacity onPress={() => startEditing(item)} hitSlop={8}>
+                          <Ionicons name="create-outline" size={18} color={colors.textDim} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteCustomItem(item)} hitSlop={8}>
+                          <Ionicons name="trash-outline" size={18} color={colors.textDim} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View style={styles.savedActions}>
-                      <TouchableOpacity onPress={() => startEditing(item)} hitSlop={8}>
-                        <Ionicons name="create-outline" size={18} color={colors.textDim} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeleteCustomItem(item)} hitSlop={8}>
-                        <Ionicons name="trash-outline" size={18} color={colors.textDim} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.logNowButton}
-                    onPress={() => {
-                      setSelectedItem(item);
-                      setLogGrams(item.food.packageServingSize ? String(item.food.packageServingSize) : "100");
-                    }}
-                  >
-                    <Text style={styles.logNowText}>Log This Item</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onPressIn={() => Animated.spring(logBtnScale, { toValue: 0.94, useNativeDriver: true, damping: 15, stiffness: 300 }).start()}
+                      onPressOut={() => Animated.spring(logBtnScale, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 200 }).start()}
+                      onPress={() => {
+                        setSelectedItem(item);
+                        setLogGrams(item.food.packageServingSize ? String(item.food.packageServingSize) : "100");
+                      }}
+                    >
+                      <Animated.View style={[styles.logNowButton, { transform: [{ scale: logBtnScale }] }]}>
+                        <Text style={styles.logNowText}>Log This Item</Text>
+                      </Animated.View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })
             )}
           </View>
         )}

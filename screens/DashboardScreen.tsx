@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Modal,
   ScrollView,
   StyleSheet,
@@ -91,6 +92,17 @@ export default function DashboardScreen() {
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
   const [draftMealType, setDraftMealType] = useState<(typeof MEAL_TYPES)[number]>("Breakfast");
   const [draftMealGrams, setDraftMealGrams] = useState("100");
+
+  // Animation refs
+  const calorieProg = useRef(new Animated.Value(0)).current;
+  const waterProg = useRef(new Animated.Value(0)).current;
+  const stepProg = useRef(new Animated.Value(0)).current;
+  const macroProg = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  const animatedCalories = useRef(new Animated.Value(0)).current;
+  const displayCalories = useRef(0);
+  const [renderedCalories, setRenderedCalories] = useState(0);
+  const mealAnims = useRef(MEAL_TYPES.map(() => ({ opacity: new Animated.Value(0), translateY: new Animated.Value(20) }))).current;
+  const pillScales = useRef(Array.from({ length: 21 }, () => new Animated.Value(1))).current;
 
   const today = todayISO();
   const { width: screenWidth } = useWindowDimensions();
@@ -255,6 +267,62 @@ export default function DashboardScreen() {
   const progress = goalCalories > 0 ? Math.min(totals.calories / goalCalories, 1) : 0;
   const waterProgress = waterGoalMl > 0 ? Math.min(waterMl / waterGoalMl, 1) : 0;
   const stepProgress = stepGoal > 0 ? Math.min(stepCount / stepGoal, 1) : 0;
+
+  // Animate progress bars whenever their values change
+  useEffect(() => {
+    Animated.spring(calorieProg, { toValue: progress, useNativeDriver: false, damping: 18, stiffness: 120 }).start();
+  }, [progress]);
+
+  useEffect(() => {
+    Animated.spring(waterProg, { toValue: waterProgress, useNativeDriver: false, damping: 18, stiffness: 120 }).start();
+  }, [waterProgress]);
+
+  useEffect(() => {
+    Animated.spring(stepProg, { toValue: stepProgress, useNativeDriver: false, damping: 18, stiffness: 120 }).start();
+  }, [stepProgress]);
+
+  useEffect(() => {
+    const macroValues = [
+      goalProtein > 0 ? Math.min(totals.protein / goalProtein, 1) : 0,
+      goalCarbs > 0 ? Math.min(totals.carbs / goalCarbs, 1) : 0,
+      goalFat > 0 ? Math.min(totals.fat / goalFat, 1) : 0,
+    ];
+    Animated.parallel(
+      macroProg.map((anim, i) =>
+        Animated.spring(anim, { toValue: macroValues[i], useNativeDriver: false, damping: 18, stiffness: 120 })
+      )
+    ).start();
+  }, [totals.protein, totals.carbs, totals.fat, goalProtein, goalCarbs, goalFat]);
+
+  // Calorie count-up
+  useEffect(() => {
+    Animated.timing(animatedCalories, { toValue: totals.calories, duration: 600, useNativeDriver: false }).start();
+  }, [totals.calories]);
+
+  useEffect(() => {
+    const id = animatedCalories.addListener(({ value }) => {
+      const rounded = Math.round(value);
+      if (rounded !== displayCalories.current) {
+        displayCalories.current = rounded;
+        setRenderedCalories(rounded);
+      }
+    });
+    return () => animatedCalories.removeListener(id);
+  }, []);
+
+  // Meal cards staggered entrance
+  useEffect(() => {
+    mealAnims.forEach((anim) => { anim.opacity.setValue(0); anim.translateY.setValue(20); });
+    Animated.stagger(
+      80,
+      mealAnims.map((anim) =>
+        Animated.parallel([
+          Animated.timing(anim.opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+          Animated.spring(anim.translateY, { toValue: 0, useNativeDriver: true, damping: 16, stiffness: 140 }),
+        ])
+      )
+    ).start();
+  }, [selectedDate, meals.length]);
   const waterLitres = (waterMl / 1000).toFixed(1);
   const waterGoalLitres = (waterGoalMl / 1000).toFixed(1);
   const formattedStepSync = lastStepSyncedAt
@@ -283,18 +351,24 @@ export default function DashboardScreen() {
             const isSelected = date === selectedDate;
             const isToday = date === today;
             const isLast = index === timelineDates.length - 1;
+            const pillScale = pillScales[index];
             return (
               <TouchableOpacity
                 key={date}
                 style={[styles.dayPill, !isLast && styles.dayPillSpaced, isToday && styles.dayPillToday, isSelected && !isToday && styles.dayPillActive]}
                 onPress={() => setSelectedDate(date)}
+                onPressIn={() => Animated.spring(pillScale, { toValue: 0.92, useNativeDriver: true, damping: 15, stiffness: 300 }).start()}
+                onPressOut={() => Animated.spring(pillScale, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 200 }).start()}
+                activeOpacity={1}
               >
-                <Text style={[styles.dayPillWeekday, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
-                  {label.weekday}
-                </Text>
-                <Text style={[styles.dayPillDay, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
-                  {label.day}
-                </Text>
+                <Animated.View style={{ transform: [{ scale: pillScale }], alignItems: "center" }}>
+                  <Text style={[styles.dayPillWeekday, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
+                    {label.weekday}
+                  </Text>
+                  <Text style={[styles.dayPillDay, isToday && styles.dayPillTodayText, isSelected && !isToday && styles.dayPillTextActive]}>
+                    {label.day}
+                  </Text>
+                </Animated.View>
               </TouchableOpacity>
             );
           })}
@@ -310,10 +384,10 @@ export default function DashboardScreen() {
               <Text style={styles.cardTitle}>Calories</Text>
               <Ionicons name="flame-outline" size={16} color={colors.primaryContainer} />
             </View>
-            <Text style={styles.bigNumber}>{Math.round(totals.calories).toLocaleString()}</Text>
+            <Text style={styles.bigNumber}>{renderedCalories.toLocaleString()}</Text>
             <Text style={styles.sub}>/ {goalCalories.toLocaleString()} kcal</Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+              <Animated.View style={[styles.progressFill, { width: calorieProg.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }]} />
             </View>
             <Text style={[styles.remaining, remaining < 0 && { color: colors.error }]}>
               {remaining > 0 ? `${Math.round(remaining)} remaining` : remaining === 0 ? "Goal reached!" : `${Math.abs(Math.round(remaining))} over goal`}
@@ -322,7 +396,7 @@ export default function DashboardScreen() {
 
           {/* Water */}
           <TouchableOpacity style={styles.waterTopCard} onPress={openWaterModal} activeOpacity={0.9}>
-            <View style={[styles.waterFillOverlay, { height: `${waterProgress * 100}%` }]} />
+            <Animated.View style={[styles.waterFillOverlay, { height: waterProg.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }]} />
             <View style={styles.waterCardContent}>
               <View style={styles.cardTitleRow}>
                 <Text style={styles.waterTitle}>Water</Text>
@@ -363,7 +437,7 @@ export default function DashboardScreen() {
             <Text style={styles.stepsGoalText}>/ {stepGoal.toLocaleString()} goal</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.stepsProgressFill, { width: `${stepProgress * 100}%` }]} />
+            <Animated.View style={[styles.stepsProgressFill, { width: stepProg.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }]} />
           </View>
           <Text style={styles.stepsRemainingText}>
             {stepGoal <= 0
@@ -377,22 +451,19 @@ export default function DashboardScreen() {
         {/* Macros */}
         <View style={styles.macroRow}>
           {[
-            { label: "PROTEIN", value: totals.protein, goal: goalProtein, color: colors.proteine },
-            { label: "CARBS",   value: totals.carbs,   goal: goalCarbs,   color: colors.carbohydrates },
-            { label: "FAT",     value: totals.fat,     goal: goalFat,     color: colors.fats },
-          ].map((m) => {
-            const macroProgress = m.goal > 0 ? Math.min(m.value / m.goal, 1) : 0;
-            return (
-              <View key={m.label} style={[styles.macroCard, { borderTopColor: m.color }]}>
-                <Text style={[styles.macroLabel, { color: m.color }]}>{m.label}</Text>
-                <Text style={styles.macroValue}>{Math.round(m.value)}<Text style={styles.macroUnit}>g</Text></Text>
-                <View style={styles.macroProgressBar}>
-                  <View style={[styles.macroProgressFill, { width: `${macroProgress * 100}%`, backgroundColor: m.color }]} />
-                </View>
-                <Text style={styles.macroGoalText}>/ {m.goal}g</Text>
+            { label: "PROTEIN", value: totals.protein, goal: goalProtein, color: colors.proteine, animIdx: 0 },
+            { label: "CARBS",   value: totals.carbs,   goal: goalCarbs,   color: colors.carbohydrates, animIdx: 1 },
+            { label: "FAT",     value: totals.fat,     goal: goalFat,     color: colors.fats, animIdx: 2 },
+          ].map((m) => (
+            <View key={m.label} style={[styles.macroCard, { borderTopColor: m.color }]}>
+              <Text style={[styles.macroLabel, { color: m.color }]}>{m.label}</Text>
+              <Text style={styles.macroValue}>{Math.round(m.value)}<Text style={styles.macroUnit}>g</Text></Text>
+              <View style={styles.macroProgressBar}>
+                <Animated.View style={[styles.macroProgressFill, { width: macroProg[m.animIdx].interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }), backgroundColor: m.color }]} />
               </View>
-            );
-          })}
+              <Text style={styles.macroGoalText}>/ {m.goal}g</Text>
+            </View>
+          ))}
         </View>
 
         {/* Meals header */}
@@ -402,12 +473,14 @@ export default function DashboardScreen() {
         </View>
 
         {/* Meal cards */}
-        {MEAL_TYPES.map((type) => {
+        {MEAL_TYPES.map((type, index) => {
           const color = MEAL_COLORS[type];
           const entries = meals.filter((m) => m.mealType === type);
           const typeCals = entries.reduce((sum, e) => sum + e.food.calories * e.servings, 0);
+          const anim = mealAnims[index];
           return (
-            <View key={type} style={[styles.card, styles.mealCard, { borderLeftColor: color }]}>
+            <Animated.View key={type} style={[{ opacity: anim.opacity, transform: [{ translateY: anim.translateY }] }]}>
+            <View style={[styles.card, styles.mealCard, { borderLeftColor: color }]}>
               <View style={styles.mealHeader}>
                 <Text style={[styles.mealType, { color }]}>{type}</Text>
                 <Text style={styles.mealCals}>
@@ -433,6 +506,7 @@ export default function DashboardScreen() {
                 ))
               )}
             </View>
+            </Animated.View>
           );
         })}
       </ScrollView>
